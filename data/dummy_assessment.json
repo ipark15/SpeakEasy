@@ -1,0 +1,39 @@
+{
+  "user_id": "demo_user_001",
+  "session_id": "demo_session_001",
+  "scores": {
+    "fluency": 68,
+    "clarity": 74,
+    "rhythm": 42,
+    "prosody": 61,
+    "voice_quality": 70,
+    "overall": 63
+  },
+  "features": {
+    "word_error_rate": 0.26,
+    "ddk_rate": 3.8,
+    "rhythm_regularity": 0.48,
+    "wpm": 92,
+    "pitch_std": 14.5,
+    "jitter": 1.4,
+    "shimmer": 4.1,
+    "hnr": 18.2
+  },
+  "events": {
+    "pauses": [
+      {
+        "start": 4.2,
+        "end": 5.5,
+        "duration": 1.3,
+        "after_word": "bring"
+      }
+    ],
+    "low_confidence_words": [
+      {
+        "word": "Stella",
+        "time": 1.1,
+        "confidence": 0.62
+      }
+    ]
+  }
+}
