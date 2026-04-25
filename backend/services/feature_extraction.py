@@ -120,15 +120,24 @@ def analyze_pataka(audio: np.ndarray, sr: int = 16000) -> dict:
         return {"syllable_intervals": [], "rhythm_regularity": 0.0, "ddk_rate": 0.0}
 
     intervals_ms = np.diff(onset_times) * 1000
-    valid = intervals_ms[(intervals_ms > 50) & (intervals_ms < 500)]
-    if len(valid) < 2:
-        return {"syllable_intervals": intervals_ms.tolist(), "rhythm_regularity": 0.0, "ddk_rate": 0.0}
 
-    mean_i, std_i = float(np.mean(valid)), float(np.std(valid))
+    # Within-syllable intervals: 50–300ms (pa-ta-ka at normal speed = ~130-200ms each)
+    # Intervals >300ms are pauses between groups — excluded from DDK rate
+    syllable = intervals_ms[(intervals_ms > 50) & (intervals_ms < 300)]
+    # All sub-500ms intervals used for regularity (includes slightly slower speech)
+    all_valid = intervals_ms[(intervals_ms > 50) & (intervals_ms < 500)]
+
+    if len(syllable) < 2:
+        return {"syllable_intervals": [], "rhythm_regularity": 0.0, "ddk_rate": 0.0}
+
+    mean_i = float(np.mean(syllable))
+    # Regularity penalizes variance across ALL valid intervals including group boundaries —
+    # intentional pauses between groups inflate std, correctly lowering the score
+    std_i = float(np.std(all_valid)) if len(all_valid) > 1 else float(np.std(syllable))
     regularity = round(max(0.0, 1.0 - (std_i / mean_i)), 3) if mean_i > 0 else 0.0
     ddk_rate = round(1000.0 / mean_i, 2) if mean_i > 0 else 0.0
     return {
-        "syllable_intervals": [round(v, 1) for v in valid.tolist()],
+        "syllable_intervals": [round(v, 1) for v in all_valid.tolist()],
         "rhythm_regularity": regularity,
         "ddk_rate": ddk_rate,
     }
@@ -219,7 +228,7 @@ def detect_acoustic_fillers(wav_path: str) -> int:
 
 def extract_pronunciation(words: list[TranscriptWord]) -> dict:
     if not words:
-        return {"avg_word_confidence": 0.0, "low_confidence_words": []}
+        return {"avg_word_confidence": None, "low_confidence_words": []}
     confidences = [w.confidence for w in words]
     avg = round(float(np.mean(confidences)), 3)
     low = [

@@ -1,7 +1,7 @@
-# SpeechScore — Claude Context
+# SpeakEasy — Claude Context
 
 ## What This Is
-AI-powered speech assessment + therapy platform. User completes a 3-task ~60s assessment, receives a scored profile, then gets routed to specialized AI therapy agents for interactive coaching. Built for a hackathon.
+AI-powered speech assessment + therapy platform. User completes a 3-task ~45s assessment, receives a scored profile across 5 dimensions, then gets routed to specialized AI therapy agents for interactive coaching. Built for a hackathon.
 
 ## Team Split
 - **You**: Backend — FastAPI, feature extraction, scoring, agent definitions
@@ -9,31 +9,42 @@ AI-powered speech assessment + therapy platform. User completes a 3-task ~60s as
 - **Teammate 3**: Gemma agent prompts, ASI:One Agentverse deployment, WebSocket integration
 - **Teammate 4**: Supabase schema + auth, integration, ElevenLabs, demo/pitch
 
-## Assessment Structure (single unified assessment)
-1. **Read aloud** (10s) — `"Please call Stella and ask her to bring these things with her from the store."` → WER, articulation, jitter/shimmer/HNR
-2. **Pa-ta-ka** (8s) — DDK test → DDK rate, rhythm regularity, syllable interval variance
-3. **Free speech** (20s) — *"Tell me one thing you did yesterday"* → WPM, fillers, pitch variation, pauses
+## Assessment Tasks (3 tasks, ~45s total)
+1. **Read Aloud** (~10s) — `"Please call Stella and ask her to bring these things with her from the store."` → WER, WPM, pauses, pitch std, per-word confidence
+2. **Pa-ta-ka** (~8s) — DDK rate, rhythm regularity
+3. **Free Speech** (~20s) — WPM, fillers, pauses, pitch std, rate CV, per-word confidence
+
+## Score Dimensions → Agents (1:1 mapping)
+
+| Dimension | Metrics | Tasks | Agent |
+|---|---|---|---|
+| **Fluency** | WPM, filler rate, pause rate | read_sentence + free_speech | Fluency Coach |
+| **Clarity** | WER vs reference sentence | read_sentence only | Clarity Coach |
+| **Rhythm** | DDK rate + inter-syllable regularity | pataka only | Rhythm Coach |
+| **Prosody** | Pitch std + speech rate CV | read_sentence (pitch only) + free_speech | Prosody Coach |
+| **Pronunciation** | Per-word Whisper confidence (+ WER blend on read_sentence) | read_sentence + free_speech | Pronunciation Coach |
+
+## Scoring Weights Per Task
+- **read_sentence**: clarity 40%, pronunciation 30%, fluency 20%, prosody 10%
+- **pataka**: rhythm 100%
+- **free_speech**: fluency 35%, prosody 35%, pronunciation 30%
+
+## What We Dropped
+- **Sustained vowel task** — removed (voice quality metrics unreliable on consumer hardware)
+- **Voice quality dimension** (jitter/shimmer/HNR) — removed from scoring (too noisy on laptop/Bluetooth mics; still extracted but not scored)
+- **Speaking time ratio** — redundant with pause count, removed
+- **HuBERT** — replaced by Whisper confidence scores (simpler, no 90MB model)
 
 ## Multi-Agent Therapy Team (ASI:One Agentverse)
-5 uAgents hosted on Agentverse, each powered by Gemma internally:
-
-| Agent | Triggered by |
-|---|---|
-| **Orchestrator** | Assessment complete — routes to coaches by score priority |
-| **Rhythm Coach** | Low DDK rate / rhythm regularity |
-| **Clarity Coach** | High WER / articulation issues |
-| **Fluency Coach** | High filler rate / hesitations |
-| **Prosody Coach** | Low pitch variation / monotone |
-| **Pronunciation Coach** | Low word confidence scores |
-
-Frontend ↔ FastAPI WebSocket ↔ Agentverse agent (FastAPI is the bridge)
+5 uAgents hosted on Agentverse, each powered by Gemma internally. Orchestrator reads all 5 scores and routes user to the 2-3 lowest-scoring agents.
 
 ## Tech Stack
 | Tool | Role | Runs where |
 |---|---|---|
-| faster-whisper `base.en` | ASR fallback | Backend local |
-| parselmouth (Praat) | Pitch, formants, jitter, shimmer, HNR | Backend local — signal processing, not a neural model |
-| librosa | DDK onset detection, RMS energy | Backend local |
+| whisper.cpp `tiny.en` | Fast transcript + timestamps via Metal | M2 GPU subprocess |
+| faster-whisper `tiny.en` | Per-word confidence scores (parallel thread) | CPU |
+| parselmouth (Praat) | Pitch, jitter, shimmer, HNR | CPU signal processing |
+| librosa | DDK onset detection, RMS energy | CPU signal processing |
 | Gemma `gemma-2-9b-it` | Intelligence inside each agent | Google AI Studio API |
 | uAgents / ASI:One Agentverse | Agent infrastructure + messaging | Agentverse cloud |
 | Supabase | Users, sessions, assessment history, chat history | Supabase cloud |
@@ -41,14 +52,20 @@ Frontend ↔ FastAPI WebSocket ↔ Agentverse agent (FastAPI is the bridge)
 | ElevenLabs | TTS — reads coach messages aloud | ElevenLabs API |
 | ZETIC | Whisper in-browser (teammate) | User's browser |
 
+## Transcription Architecture
+whisper.cpp (Metal, ~0.6s) and faster-whisper (CPU, ~3-5s) run in **parallel threads**:
+- whisper.cpp → transcript text + approximate word timestamps
+- faster-whisper → real per-word confidence scores
+- Results merged: text from cpp, confidence from faster-whisper matched by word
+
 ## Privacy Story
 - Raw audio: stays on your server (or browser if ZETIC active)
-- Gemma receives: anonymized numeric features only — never raw audio or transcript
+- Gemma receives: anonymized numeric scores only — never raw audio or transcript
 - ElevenLabs receives: text string only
 - Supabase stores: scores, features, conversation history — no audio files
 
 ## API Endpoints
-- `POST /api/assess` — one call per task, runs full pipeline, saves to Supabase
+- `POST /api/assess` — one call per task, runs full pipeline
 - `POST /api/session/start` — creates session record, returns session_id
 - `GET /api/session/{session_id}` — full session data
 - `WS /ws/coach/{session_id}` — real-time coach chat relay
@@ -65,18 +82,14 @@ multipart/form-data:
   word_timestamps   str?    JSON-encoded List[TranscriptWord] from ZETIC
 ```
 
-## Reference Sentences
-- Read aloud: `"Please call Stella and ask her to bring these things with her from the store."`
-- Free speech prompt: `"Tell me one thing you did yesterday."`
-
-## Scoring Weights (single assessment)
-- fluency × 0.25, clarity × 0.25, rhythm × 0.25, prosody × 0.15, voice_quality × 0.10
+## Reference Sentence
+Read aloud: `"Please call Stella and ask her to bring these things with her from the store."`
 
 ## Environment Setup
 ```bash
-brew install ffmpeg
+brew install ffmpeg whisper-cpp
 pip install -r requirements.txt
-cp .env.example .env   # fill in keys below
+cp .env.example .env
 ```
 
 ## Required .env Keys
@@ -87,20 +100,23 @@ SUPABASE_URL=...         # Supabase project URL
 SUPABASE_KEY=...         # Supabase anon key
 ```
 
-## Running the Backend
+## Running
 ```bash
 python main.py
 # or
 uvicorn backend.app:app --reload --port 8000
 ```
 
-## Key Architectural Decisions
-- **parselmouth over librosa for pitch/voice quality**: Praat gives jitter/shimmer/HNR which librosa cannot; more accurate F0 for speech
-- **librosa kept for DDK**: onset_detect is better suited for pa-ta-ka rhythm analysis than Praat
-- **No HuBERT**: pronunciation scored via Whisper word confidence + WER — simpler, fast, no 90MB model
-- **FastAPI as agent bridge**: frontend never talks to Agentverse directly; FastAPI holds agent addresses and proxies via uAgent protocol
-- **Supabase for longitudinal context**: agents can reference past session scores to track improvement
-- **faster-whisper is fallback**: primary ASR path is ZETIC (browser); backend skips if transcript provided
+## Terminal Test
+```bash
+.venv/bin/python test_pipeline.py
+```
 
-## Full Detailed Plan
-`~/.claude/plans/speechscore-is-an-ai-powered-joyful-pine.md`
+## Key Architectural Decisions
+- **whisper.cpp + faster-whisper in parallel**: cpp for speed (Metal), fw for confidence scores — merged result
+- **No voice quality agent**: jitter/shimmer/HNR are too unreliable on consumer hardware for scoring
+- **WER blended into pronunciation on read_sentence**: WER is the strongest articulation signal when a reference exists
+- **Prosody on read_sentence is pitch-only**: rate CV not computed for scripted reading (unnatural constraint)
+- **Pataka is rhythm-only**: Whisper can't transcribe pa-ta-ka; onset detection is the only valid signal
+- **FastAPI as agent bridge**: frontend never talks to Agentverse directly
+- **Supabase for longitudinal context**: agents can reference past session scores to track improvement

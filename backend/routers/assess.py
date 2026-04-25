@@ -44,22 +44,22 @@ async def assess(
 
         wpm = filler_events = filler_count = wer = None
         acoustic_filler_count = None
-        speaking_ratio = speech_rate_cv = None
+        speech_rate_cv = None
         pataka_data: dict = {}
 
         if task == "read_sentence":
             wpm = fe.calculate_wpm(words, duration)
             wer = fe.calculate_wer(fe.READ_SENTENCE, text)
-            speaking_ratio = fe.speaking_time_ratio(words, duration)
+
         elif task == "pataka":
             pataka_data = fe.analyze_pataka(audio_array)
+
         elif task == "free_speech":
             wpm = fe.calculate_wpm(words, duration)
             filler_list = fe.detect_fillers(words)
             filler_count = len(filler_list)
             filler_events = filler_list
             acoustic_filler_count = fe.detect_acoustic_fillers(wav_path)
-            speaking_ratio = fe.speaking_time_ratio(words, duration)
             speech_rate_cv = fe.speech_rate_variation(words)
 
         features = FeatureResult(
@@ -74,7 +74,6 @@ async def assess(
             filler_count=filler_count,
             acoustic_filler_count=acoustic_filler_count,
             filler_words=filler_events,
-            speaking_time_ratio=speaking_ratio,
             speech_rate_cv=speech_rate_cv,
             word_error_rate=wer,
             syllable_intervals=pataka_data.get("syllable_intervals"),
@@ -90,7 +89,7 @@ async def assess(
             task=task,
             features=features,
             scores=scores,
-            feedback="",   # Gemma feedback wired in next phase
+            feedback="",
             tips=[],
             audio_duration=duration,
         )
