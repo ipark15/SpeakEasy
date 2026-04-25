@@ -32,18 +32,13 @@ ENV/
 env/
 
 # ── ML / Model Artifacts ───────────────────────────────────────────────────────
-# HuBERT and other large model weights — download at runtime, don't commit
 *.bin
 *.safetensors
 *.ot
 *.onnx
 *.pt
 *.pth
-
-# Pre-computed reference embeddings are generated locally (see scripts/generate_reference.py)
 reference_embeddings/
-
-# Whisper model cache
 ~/.cache/whisper/
 *.fasterwhisper/
 
@@ -63,8 +58,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnp.*
-
-# Build output
 frontend/dist/
 frontend/build/
 frontend/.next/
