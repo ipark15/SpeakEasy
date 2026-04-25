@@ -1,7 +1,7 @@
 # ── Environment & Secrets ──────────────────────────────────────────────────────
 .env
 .env.*
-!.env.example
+.mcp.json
 *.pem
 *.key
 
