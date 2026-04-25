@@ -8,8 +8,10 @@ Usage:
     .venv/bin/python test_pipeline.py
 """
 
+import json
 import sys
 import threading
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -139,7 +141,10 @@ def run_task(task: dict) -> dict:
         print("  [1/3] Transcribing...")
         text, words = transcribe(wav_path, task=task["id"])
 
-        if task["show_transcript"]:
+        if task["id"] == "pataka":
+            preview = text[:80] + ("..." if len(text) > 80 else "")
+            print(f'         Whisper raw (ignored for scoring): "{preview}"')
+        elif task["show_transcript"]:
             if text:
                 preview = text[:120] + ("..." if len(text) > 120 else "")
                 print(f'         Transcript: "{preview}"')
@@ -253,9 +258,9 @@ def print_report(results: list[dict]) -> None:
         print(f"    Duration:           {f.audio_duration:.1f}s")
 
         if f.wpm is not None:
-            print(f"    WPM:                {f.wpm:.0f}  (natural: 120–180)")
+            print(f"    WPM:                {f.wpm:.0f}  (ideal: 120–160)")
         if f.word_error_rate is not None:
-            print(f"    Word error rate:    {f.word_error_rate:.1%}")
+            print(f"    Word error rate:    {f.word_error_rate:.1%}  (excellent <5%, good <15%)")
         if f.pause_count > 0:
             print(f"    Pauses (≥400ms):    {f.pause_count}  (longest: {f.max_pause_duration:.2f}s)")
         if f.filler_count is not None:
@@ -267,12 +272,12 @@ def print_report(results: list[dict]) -> None:
             acoustic_note = f"  (acoustic backup: {acoustic_n})" if acoustic_n > transcript_n else ""
             print(f"    Filler words:       {best}{detail}{acoustic_note}")
         if f.speech_rate_cv is not None:
-            print(f"    Rate variation CV:  {f.speech_rate_cv:.3f}  (natural: 0.10–0.80)")
+            print(f"    Rate variation CV:  {f.speech_rate_cv:.3f}  (natural: 0.10–0.80, higher = more expressive)")
         if f.ddk_rate is not None:
             print(f"    DDK rate:           {f.ddk_rate:.1f} syl/sec  (normal: 4.5–8.0)")
-            print(f"    Rhythm regularity:  {f.rhythm_regularity:.2f}  (1.0 = perfect)")
+            print(f"    Rhythm regularity:  {f.rhythm_regularity:.2f}  (good speech ~0.5, max ~0.9)")
         if f.pitch_mean and f.pitch_mean > 0:
-            print(f"    Pitch mean / std:   {f.pitch_mean:.0f} Hz / {f.pitch_std:.0f} Hz")
+            print(f"    Pitch mean / std:   {f.pitch_mean:.0f} Hz / {f.pitch_std:.0f} Hz  (expressive: 20–55 Hz std)")
         if f.avg_word_confidence is not None:
             print(f"    Word confidence:    {f.avg_word_confidence:.1%}")
         if f.low_confidence_words:
@@ -282,17 +287,114 @@ def print_report(results: list[dict]) -> None:
     # ── Composite summary ─────────────────────────────────────────────────────
     print(f"\n{'═'*62}")
     print("  DIMENSION AVERAGES ACROSS ALL TASKS:")
-    composite_vals = []
     for label, vals in all_scores.items():
         if label == "Overall":
             continue
         avg = round(sum(vals) / len(vals), 1)
-        composite_vals.append(avg)
         print(f"    {label:<15} {_bar(avg)}")
 
-    composite = round(sum(composite_vals) / len(composite_vals), 1) if composite_vals else 0.0
-    print(f"\n  COMPOSITE SCORE:   {_bar(composite)}")
+    composite = _composite_score(results)
+    print(f"\n  COMPOSITE SCORE:   {_bar(composite)}  (read/free_speech 40% each, pataka 20%)")
     print(f"{'═'*62}\n")
+
+
+# ── JSON export ──────────────────────────────────────────────────────────────
+
+_TASK_WEIGHTS = {"read_sentence": 0.40, "pataka": 0.20, "free_speech": 0.40}
+
+
+def _composite_score(results: list[dict]) -> float:
+    total = weight_sum = 0.0
+    for r in results:
+        w = _TASK_WEIGHTS.get(r["task"]["id"], 0.33)
+        total += r["scores"].overall * w
+        weight_sum += w
+    return round(total / weight_sum, 1) if weight_sum > 0 else 0.0
+
+
+def save_assessment_json(results: list[dict]) -> None:
+    composite = _composite_score(results)
+
+    payload = {
+        "assessed_at": datetime.now(timezone.utc).isoformat(),
+        "composite_score": composite,
+        "scores_summary": {},
+        "tasks": [],
+    }
+
+    for r in results:
+        task = r["task"]
+        f = r["features"]
+        s = r["scores"]
+        tid = task["id"]
+
+        # Flat scores dict — only non-null dimensions
+        scores = {k: v for k, v in {
+            "overall":       s.overall,
+            "fluency":       s.fluency,
+            "clarity":       s.clarity,
+            "rhythm":        s.rhythm,
+            "prosody":       s.prosody,
+            "pronunciation": s.pronunciation,
+        }.items() if v is not None}
+
+        # Track per-dimension scores for orchestrator routing
+        for dim, val in scores.items():
+            if dim == "overall":
+                continue
+            payload["scores_summary"].setdefault(dim, []).append(val)
+
+        # Metadata for orchestrator context
+        meta: dict = {"instruction": task["instruction"].strip()}
+        if tid == "read_sentence":
+            meta["reference_sentence"] = fe.READ_SENTENCE
+
+        # Key metrics — exclude pitch from pataka (not meaningful there)
+        metrics: dict = {"audio_duration": round(f.audio_duration, 2)}
+        if f.wpm is not None:
+            metrics["wpm"] = f.wpm
+        if f.word_error_rate is not None:
+            metrics["word_error_rate"] = f.word_error_rate
+        if f.pause_count:
+            metrics["pause_count"] = f.pause_count
+            metrics["max_pause_duration"] = f.max_pause_duration
+        if f.filler_count is not None:
+            metrics["filler_count"] = max(f.filler_count, f.acoustic_filler_count or 0)
+        if f.speech_rate_cv is not None:
+            metrics["speech_rate_cv"] = f.speech_rate_cv
+        if f.ddk_rate is not None:
+            metrics["ddk_rate"] = f.ddk_rate
+            metrics["rhythm_regularity"] = f.rhythm_regularity
+        if tid != "pataka" and f.pitch_std is not None:
+            metrics["pitch_mean_hz"] = f.pitch_mean
+            metrics["pitch_std_hz"] = f.pitch_std
+        if f.avg_word_confidence is not None:
+            metrics["avg_word_confidence"] = round(f.avg_word_confidence, 3)
+        if f.low_confidence_words:
+            metrics["low_confidence_words"] = [
+                {"word": w["word"], "confidence": round(w["confidence"], 3)}
+                for w in f.low_confidence_words
+            ]
+        if f.transcript:
+            metrics["transcript"] = f.transcript
+
+        payload["tasks"].append({
+            "task_id": tid,
+            "metadata": meta,
+            "scores": scores,
+            "metrics": metrics,
+        })
+
+    # Aggregate each dimension to a single score (mean across tasks that have it)
+    payload["scores_summary"] = {
+        dim: round(sum(vals) / len(vals), 1)
+        for dim, vals in payload["scores_summary"].items()
+    }
+
+    out_path = f"assessment_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+    with open(out_path, "w") as f_out:
+        json.dump(payload, f_out, indent=2)
+    print(f"  Assessment saved → {out_path}\n")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -313,6 +415,7 @@ def main():
         results.append(result)
 
     print_report(results)
+    save_assessment_json(results)
 
 
 if __name__ == "__main__":

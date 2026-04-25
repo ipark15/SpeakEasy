@@ -10,9 +10,9 @@ from backend.models.schemas import FillerEvent, PauseInfo, TranscriptWord
 
 PAUSE_THRESHOLD_MS = 400
 
+# Only true disfluency markers — words that are never used as real content words
 FILLER_WORDS = {
-    "uh", "um", "like", "basically", "actually", "literally",
-    "so", "right", "kind", "sort",
+    "uh", "um", "uh-huh", "hmm", "hm", "er", "ah",
 }
 
 READ_SENTENCE = (
@@ -121,23 +121,29 @@ def analyze_pataka(audio: np.ndarray, sr: int = 16000) -> dict:
 
     intervals_ms = np.diff(onset_times) * 1000
 
-    # Within-syllable intervals: 50–300ms (pa-ta-ka at normal speed = ~130-200ms each)
-    # Intervals >300ms are pauses between groups — excluded from DDK rate
-    syllable = intervals_ms[(intervals_ms > 50) & (intervals_ms < 300)]
-    # All sub-500ms intervals used for regularity (includes slightly slower speech)
-    all_valid = intervals_ms[(intervals_ms > 50) & (intervals_ms < 500)]
+    # Coarse filter: plausible syllable range 50–350ms
+    coarse = intervals_ms[(intervals_ms > 50) & (intervals_ms < 350)]
+    if len(coarse) < 2:
+        return {"syllable_intervals": [], "rhythm_regularity": 0.0, "ddk_rate": 0.0}
+
+    # Median-based filter: discard intervals far from median to remove false onsets.
+    # Try progressively wider windows until we get enough intervals to score.
+    median_i = float(np.median(coarse))
+    syllable = np.array([])
+    for tol in [0.30, 0.45, 0.60]:
+        syllable = coarse[(coarse > median_i * (1 - tol)) & (coarse < median_i * (1 + tol))]
+        if len(syllable) >= 4:
+            break
 
     if len(syllable) < 2:
         return {"syllable_intervals": [], "rhythm_regularity": 0.0, "ddk_rate": 0.0}
 
     mean_i = float(np.mean(syllable))
-    # Regularity penalizes variance across ALL valid intervals including group boundaries —
-    # intentional pauses between groups inflate std, correctly lowering the score
-    std_i = float(np.std(all_valid)) if len(all_valid) > 1 else float(np.std(syllable))
+    std_i = float(np.std(syllable))
     regularity = round(max(0.0, 1.0 - (std_i / mean_i)), 3) if mean_i > 0 else 0.0
     ddk_rate = round(1000.0 / mean_i, 2) if mean_i > 0 else 0.0
     return {
-        "syllable_intervals": [round(v, 1) for v in all_valid.tolist()],
+        "syllable_intervals": [round(v, 1) for v in syllable.tolist()],
         "rhythm_regularity": regularity,
         "ddk_rate": ddk_rate,
     }
