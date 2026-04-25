@@ -14,8 +14,10 @@ app.add_middleware(
 )
 
 from backend.routers import assess
+from backend.routers import dashboard
 
 app.include_router(assess.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")
 
 
 @app.get("/api/health")

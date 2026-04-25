@@ -99,6 +99,22 @@ create index if not exists assessments_session_id_idx on assessments(session_id)
 create index if not exists assessments_user_id_created_idx on assessments(user_id, created_at desc);
 
 
+-- ── User Profiles ────────────────────────────────────────────
+-- Display name and per-metric goal targets. Streaks computed from session dates.
+create table if not exists user_profiles (
+    id           uuid primary key references auth.users(id) on delete cascade,
+    display_name text,
+    goals        jsonb,      -- e.g. {"fluency": 80, "clarity": 85, "overall": 75}
+    created_at   timestamptz not null default now()
+);
+
+alter table user_profiles enable row level security;
+
+create policy "users manage own profile"
+    on user_profiles for all
+    using (auth.uid() = id);
+
+
 -- ── Coach Messages ────────────────────────────────────────────
 -- Chat history between the user and therapy agents.
 create table if not exists coach_messages (
