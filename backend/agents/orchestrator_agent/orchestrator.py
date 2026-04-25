@@ -34,10 +34,10 @@ async def handle_assessment(ctx: Context, sender: str, msg: AssessmentRequest):
         narrative = generate_narrative(assessment)
 
         ctx.logger.info("Generating PDF...")
-        os.makedirs("reports", exist_ok=True)
+        os.makedirs("backend/reports", exist_ok=True)
         pdf_path = generate_pdf(
             assessment, narrative,
-            f"reports/{msg.session_id}.pdf",
+            f"backend/reports/{msg.session_id}.pdf",
         )
 
         ctx.logger.info(f"PDF saved: {pdf_path}")
