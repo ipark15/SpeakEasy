@@ -4,7 +4,10 @@ from backend.models.schemas import FeatureResult, ScoreBreakdown
 
 def score_fluency(f: FeatureResult) -> float:
     wpm = f.wpm or 0.0
-    filler_count = f.filler_count or 0
+    # Use acoustic filler count if Whisper missed them (acoustic >= transcript count)
+    transcript_fillers = f.filler_count or 0
+    acoustic_fillers = f.acoustic_filler_count or 0
+    filler_count = max(transcript_fillers, acoustic_fillers)
     duration = max(f.audio_duration, 1.0)
 
     # WPM (0–40 pts). Target 130–160 wpm
@@ -47,17 +50,29 @@ def score_rhythm(f: FeatureResult) -> float | None:
 
 
 def score_prosody(f: FeatureResult) -> float | None:
-    if f.pitch_std is None or f.energy_std is None:
+    if f.pitch_std is None:
         return None
+
+    # Pitch variation (0–60 pts). Target: 20–60 Hz std = expressive speech
     p = f.pitch_std
     if 20.0 <= p <= 60.0:
-        pitch_pts = 50.0
+        pitch_pts = 60.0
     elif p < 20.0:
-        pitch_pts = max(0.0, 50.0 * (p / 20.0))
+        pitch_pts = max(0.0, 60.0 * (p / 20.0))
     else:
-        pitch_pts = max(0.0, 50.0 * (1.0 - (p - 60.0) / 60.0))
-    energy_pts = min(50.0, f.energy_std * 2000.0)
-    return round(min(100.0, pitch_pts + energy_pts), 1)
+        pitch_pts = max(0.0, 60.0 * (1.0 - (p - 60.0) / 60.0))
+
+    # Speech rate variation (0–40 pts). CV 0.15–0.35 = natural pacing variation
+    # Too flat (robotic) or too erratic both score lower
+    cv = f.speech_rate_cv or 0.0
+    if 0.15 <= cv <= 0.35:
+        rate_pts = 40.0
+    elif cv < 0.15:
+        rate_pts = max(0.0, 40.0 * (cv / 0.15))
+    else:
+        rate_pts = max(0.0, 40.0 * (1.0 - (cv - 0.35) / 0.35))
+
+    return round(min(100.0, pitch_pts + rate_pts), 1)
 
 
 def score_voice_quality(f: FeatureResult) -> float | None:
@@ -79,9 +94,10 @@ def score_pronunciation(f: FeatureResult) -> float | None:
 
 
 _WEIGHTS: dict[str, dict[str, float]] = {
-    "read_sentence": {"clarity": 0.40, "voice_quality": 0.30, "fluency": 0.20, "pronunciation": 0.10},
-    "pataka":        {"rhythm": 0.70, "voice_quality": 0.30},
-    "free_speech":   {"fluency": 0.35, "prosody": 0.35, "pronunciation": 0.20, "voice_quality": 0.10},
+    "read_sentence":   {"clarity": 0.40, "voice_quality": 0.30, "fluency": 0.20, "pronunciation": 0.10},
+    "pataka":          {"rhythm": 0.70, "voice_quality": 0.30},
+    "sustained_vowel": {"voice_quality": 1.0},
+    "free_speech":     {"fluency": 0.35, "prosody": 0.35, "pronunciation": 0.20, "voice_quality": 0.10},
 }
 
 
@@ -96,6 +112,7 @@ def compute_scores(features: FeatureResult, task: str) -> ScoreBreakdown:
         rhythm = score_rhythm(features)
     if task == "free_speech":
         prosody = score_prosody(features)
+    # sustained_vowel: voice_quality only (jitter/shimmer/HNR from parselmouth)
 
     voice_quality = score_voice_quality(features)
     pronunciation = score_pronunciation(features)
