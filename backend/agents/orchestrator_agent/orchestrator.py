@@ -4,9 +4,9 @@ import os
 from uagents import Agent, Context
 from dotenv import load_dotenv
 
-from agents.orchestrator_agent.models import AssessmentRequest, ReportResponse
-from agents.orchestrator_agent.gemma_client import generate_narrative
-from agents.orchestrator_agent.pdf_generator import generate_pdf
+from backend.agents.orchestrator_agent.models import AssessmentRequest, ReportResponse
+from backend.agents.orchestrator_agent.gemma_client import generate_narrative
+from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
 
 load_dotenv()
 

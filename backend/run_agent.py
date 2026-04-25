@@ -6,10 +6,10 @@ from uagents import Agent, Bureau, Context
 
 load_dotenv()
 
-from agents.orchestrator_agent.orchestrator import orchestrator
-from agents.orchestrator_agent.models import AssessmentRequest, ReportResponse
+from backend.agents.orchestrator_agent.orchestrator import orchestrator
+from backend.agents.orchestrator_agent.models import AssessmentRequest, ReportResponse
 
-with open("data/dummy_assessment.json") as f:
+with open("backend/data/dummy_assessment.json") as f:
     dummy_assessment = json.load(f)
 
 sender = Agent(
