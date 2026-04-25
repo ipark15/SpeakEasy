@@ -48,21 +48,57 @@ Frontend ↔ FastAPI WebSocket ↔ Agentverse agent (FastAPI is the bridge)
 - Supabase stores: scores, features, conversation history — no audio files
 
 ## API Endpoints
-- `POST /api/assess` — one call per task, runs full pipeline, saves to Supabase
-- `POST /api/session/start` — creates session record, returns session_id
-- `GET /api/session/{session_id}` — full session data
-- `WS /ws/coach/{session_id}` — real-time coach chat relay
-- `POST /api/tts` — ElevenLabs TTS
+- `POST /api/session/start` — creates session record, returns `session_id`
+- `POST /api/assess` — one call per task, runs full pipeline, saves to Supabase; auto-marks session complete after all 3 tasks
+- `GET /api/session/{session_id}` — full session + all assessments
+- `GET /api/dashboard/{user_id}` — trend data, streaks, goals
+- `POST /api/profile` — upsert display name + goal targets
+- `GET /api/export/{user_id}/csv` — downloadable CSV of all scores
+- `GET /api/export/{user_id}/pdf` — PDF report (summary for general clinicians + detailed SLP table)
+- `WS /ws/coach/{session_id}` — real-time coach chat relay (not yet implemented)
+- `POST /api/tts` — ElevenLabs TTS (not yet implemented)
 - `GET /api/health` — smoke test
+
+## Frontend Call Sequence (per assessment)
+```
+1. POST /api/session/start        { user_id }
+   ← { session_id }
+
+2. POST /api/assess   (task="read_sentence", audio, user_id, session_id)
+   ← AssessmentResponse + session_id + assessment_id
+
+3. POST /api/assess   (task="pataka", audio, user_id, session_id)
+
+4. POST /api/assess   (task="free_speech", audio, user_id, session_id)
+   ← session auto-marked complete server-side after this call
+
+5. GET /api/session/{session_id}
+   ← full session + all 3 assessments
+```
 
 ## `/api/assess` Request Shape
 ```
 multipart/form-data:
   audio             File    WebM/opus blob
   task              str     "read_sentence" | "pataka" | "free_speech"
-  user_id           str     Supabase user ID
-  transcript        str?    Pre-computed by ZETIC (skip faster-whisper if provided)
+  user_id           str     Supabase user ID (from supabase.auth.getUser().id)
+  session_id        str     From /api/session/start
+  transcript        str?    Pre-computed by ZETIC (skips faster-whisper if provided)
   word_timestamps   str?    JSON-encoded List[TranscriptWord] from ZETIC
+```
+
+## `/api/assess` Response Shape (AssessmentResponse)
+```json
+{
+  "task": "read_sentence",
+  "features": { ...all FeatureResult fields... },
+  "scores": { "fluency": 72.0, "clarity": 85.0, ..., "overall": 79.0 },
+  "feedback": "",
+  "tips": [],
+  "audio_duration": 9.8,
+  "session_id": "uuid",
+  "assessment_id": "uuid"
+}
 ```
 
 ## Reference Sentences
@@ -84,8 +120,31 @@ cp .env.example .env   # fill in keys below
 GEMMA_API_KEY=...        # Google AI Studio
 ELEVENLABS_API_KEY=...   # ElevenLabs
 SUPABASE_URL=...         # Supabase project URL
-SUPABASE_KEY=...         # Supabase anon key
+SUPABASE_KEY=...         # Supabase service role key (bypasses RLS — backend only)
 ```
+
+## Supabase Schema
+4 tables — run `backend/db/schema.sql` once in the Supabase SQL Editor to create them.
+
+| Table | Purpose |
+|---|---|
+| `sessions` | One per 3-task assessment run. Tracks status + composite score. |
+| `assessments` | One per task per session. All features + scores + feedback. |
+| `coach_messages` | Chat history with therapy agents (role: user/assistant). |
+| `user_profiles` | Display name + per-metric goal targets (JSONB). |
+
+RLS enabled on all tables — users see only their own rows. Backend uses service role key to bypass RLS.
+
+## DB Query Functions (`backend/db/queries.py`)
+- `create_session(user_id)` → `session_id`
+- `save_assessment(session_id, user_id, response)` → `assessment_id`
+- `complete_session(session_id, overall_score)`
+- `get_session(session_id)` → session + assessments
+- `save_coach_message(session_id, user_id, agent_type, role, content)`
+- `get_coach_history(session_id)`
+- `upsert_profile(user_id, display_name, goals)`
+- `get_profile(user_id)`
+- `get_dashboard_data(user_id)` → sessions, assessments, streaks, goals
 
 ## Running the Backend
 ```bash
@@ -102,5 +161,17 @@ uvicorn backend.app:app --reload --port 8000
 - **Supabase for longitudinal context**: agents can reference past session scores to track improvement
 - **faster-whisper is fallback**: primary ASR path is ZETIC (browser); backend skips if transcript provided
 
+## Frontend Notes
+- Supabase anon/publishable key is safe for the browser (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`)
+- Service role key stays server-side only — never expose in frontend
+- `user_id` = `supabase.auth.getUser()` → `user.id`
+- ZETIC handles in-browser Whisper; passes `transcript` + `word_timestamps` to `/api/assess` so backend skips faster-whisper
+
+## Dashboard & Export (future UI)
+- Trend lines, streaks, goals fed by `GET /api/dashboard/{user_id}`
+- PDF export = two sections: summary (general clinician) + detailed SLP table
+- CSV export = one row per assessment with all scalar metrics
+
 ## Full Detailed Plan
 `~/.claude/plans/speechscore-is-an-ai-powered-joyful-pine.md`
+`~/.claude/plans/also-we-want-to-synthetic-kahan.md` (dashboard + export plan)

@@ -78,3 +78,5 @@ class AssessmentResponse(BaseModel):
     feedback: str
     tips: List[str]
     audio_duration: float
+    session_id: Optional[str] = None
+    assessment_id: Optional[str] = None

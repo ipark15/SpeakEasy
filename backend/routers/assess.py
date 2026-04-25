@@ -4,21 +4,49 @@ from typing import Optional
 
 import numpy as np
 from fastapi import APIRouter, File, Form, UploadFile
+from pydantic import BaseModel
 
 from backend.models.schemas import AssessmentResponse, FeatureResult, TranscriptWord
 from backend.services import feature_extraction as fe
 from backend.services.scoring import compute_scores
 from backend.services.transcription import transcribe
 from backend.utils.audio import bytes_to_array, cleanup_temp, save_temp_wav
+import backend.db.queries as db
 
 router = APIRouter()
 
+ALL_TASKS = {"read_sentence", "pataka", "free_speech"}
+
+
+# ── Session start ─────────────────────────────────────────────
+
+class SessionStartRequest(BaseModel):
+    user_id: str
+
+
+@router.post("/session/start")
+def session_start(body: SessionStartRequest):
+    session_id = db.create_session(body.user_id)
+    return {"session_id": session_id}
+
+
+@router.get("/session/{session_id}")
+def session_get(session_id: str):
+    data = db.get_session(session_id)
+    if not data:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Session not found.")
+    return data
+
+
+# ── Assess ────────────────────────────────────────────────────
 
 @router.post("/assess", response_model=AssessmentResponse)
 async def assess(
     audio: UploadFile = File(...),
     task: str = Form(...),
     user_id: Optional[str] = Form(None),
+    session_id: Optional[str] = Form(None),
     transcript: Optional[str] = Form(None),
     word_timestamps: Optional[str] = Form(None),
 ):
@@ -28,7 +56,6 @@ async def assess(
     wav_path = save_temp_wav(audio_array)
 
     try:
-        # Transcription — skip if ZETIC pre-computed it
         if transcript and word_timestamps:
             words = [TranscriptWord(**w) for w in json.loads(word_timestamps)]
             text = transcript
@@ -81,13 +108,33 @@ async def assess(
 
         scores = compute_scores(features, task)
 
-        return AssessmentResponse(
+        response = AssessmentResponse(
             task=task,
             features=features,
             scores=scores,
-            feedback="",   # Gemma feedback wired in next phase
+            feedback="",
             tips=[],
             audio_duration=duration,
+            session_id=session_id,
         )
+
+        # Persist to DB if session context provided
+        assessment_id = None
+        if user_id and session_id:
+            assessment_id = db.save_assessment(session_id, user_id, response)
+            response.assessment_id = assessment_id
+
+            # Mark session complete when all 3 tasks have been saved
+            session_data = db.get_session(session_id)
+            completed_tasks = {a["task"] for a in session_data.get("assessments", [])}
+            if ALL_TASKS.issubset(completed_tasks):
+                all_scores = [
+                    a["score_overall"] for a in session_data["assessments"]
+                    if a.get("score_overall") is not None
+                ]
+                overall = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0.0
+                db.complete_session(session_id, overall)
+
+        return response
     finally:
         cleanup_temp(wav_path)
