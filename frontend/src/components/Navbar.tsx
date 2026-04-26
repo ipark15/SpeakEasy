@@ -8,11 +8,9 @@ export default function Navbar({ showActions = true }: NavbarProps) {
   const navigate = useNavigate()
 
   return (
-    <nav
-      style={{ background: "rgba(255,255,255,0.7)", borderBottom: "1px solid rgba(229,231,235,0.5)" }}
-      className="w-full z-50 backdrop-blur-sm px-6 py-4 flex items-center justify-between"
-    >
-      <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
+    <nav className="sp-nav sticky top-0 z-50 backdrop-blur-sm px-6 py-4 flex items-center justify-between">
+      <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+
         <div className="flex items-end gap-0.5">
           <span className="font-['Outfit'] font-extrabold text-[27px] leading-[27px] text-[#4338ca] tracking-[-0.54px]">SpeakEas</span>
           <svg width="22" height="36" viewBox="0 0 22 27" fill="none">
