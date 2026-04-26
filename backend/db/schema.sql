@@ -141,3 +141,23 @@ create policy "users see own messages"
     using (auth.uid() = user_id);
 
 create index if not exists coach_messages_session_id_idx on coach_messages(session_id, created_at asc);
+
+
+-- ── Reports ───────────────────────────────────────────────────
+-- One row per generated clinical PDF report, keyed to a session.
+create table if not exists reports (
+    id           uuid primary key default gen_random_uuid(),
+    session_id   uuid references sessions(id) on delete cascade not null unique,
+    user_id      uuid references auth.users(id) on delete cascade not null,
+    pdf_path     text not null,
+    summary      text,
+    generated_at timestamptz not null default now()
+);
+
+alter table reports enable row level security;
+
+create policy "users see own reports"
+    on reports for all
+    using (auth.uid() = user_id);
+
+create index if not exists reports_user_id_idx on reports(user_id, generated_at desc);

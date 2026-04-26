@@ -161,8 +161,9 @@ def score_prosody(f: FeatureResult, weight_cv: bool = True) -> float | None:
         ])
 
     if not weight_cv or f.speech_rate_cv is None:
-        # read_sentence: pitch only — rescale to 100
-        return round(min(100.0, (pitch_pts / 60.0) * 100.0), 1)
+        # read_sentence: pitch only. Max tier = 60pts → map to 85 max so it
+        # doesn't trivially reach 100 — monotone speech still gets penalised.
+        return round(min(100.0, (pitch_pts / 60.0) * 85.0), 1)
 
     # free_speech: pitch (70 pts) + rate CV (30 pts)
     cv = f.speech_rate_cv
@@ -179,6 +180,40 @@ def score_prosody(f: FeatureResult, weight_cv: bool = True) -> float | None:
     ])
 
     return round(min(100.0, pitch_pts + cv_pts), 1)
+
+
+def score_voice_quality(f: FeatureResult) -> float | None:
+    if f.jitter is None or f.shimmer is None or f.hnr is None:
+        return None
+
+    # Jitter (0–34 pts). Clinical threshold: < 1.0% relative jitter.
+    jitter_pts = _tier(f.jitter, [
+        (0.0, 0.5, 34.0),
+        (0.5, 1.0, 25.0),
+        (1.0, 1.5, 15.0),
+        (1.5, 2.5,  6.0),
+        (2.5, 999,  0.0),
+    ])
+
+    # Shimmer (0–33 pts). Clinical threshold: < 3.0%.
+    shimmer_pts = _tier(f.shimmer, [
+        (0.0, 1.5, 33.0),
+        (1.5, 3.0, 22.0),
+        (3.0, 5.0, 11.0),
+        (5.0, 7.0,  4.0),
+        (7.0, 999,  0.0),
+    ])
+
+    # HNR (0–33 pts). Clinical norm: > 20 dB is healthy voice.
+    hnr_pts = _tier(f.hnr, [
+        (25, 999, 33.0),
+        (20,  25, 22.0),
+        (15,  20, 11.0),
+        (10,  15,  4.0),
+        ( 0,  10,  0.0),
+    ])
+
+    return round(min(100.0, jitter_pts + shimmer_pts + hnr_pts), 1)
 
 
 def score_pronunciation(f: FeatureResult) -> float | None:
@@ -230,9 +265,9 @@ def score_pronunciation(f: FeatureResult) -> float | None:
 
 # 5 dimensions — one per therapy agent
 _WEIGHTS: dict[str, dict[str, float]] = {
-    "read_sentence": {"clarity": 0.40, "pronunciation": 0.30, "fluency": 0.20, "prosody": 0.10},
-    "pataka":        {"rhythm": 1.0},
-    "free_speech":   {"fluency": 0.35, "prosody": 0.35, "pronunciation": 0.30},
+    "read_sentence": {"clarity": 0.35, "pronunciation": 0.25, "fluency": 0.20, "prosody": 0.10, "voice_quality": 0.10},
+    "pataka":        {"rhythm": 0.85, "voice_quality": 0.15},
+    "free_speech":   {"fluency": 0.30, "prosody": 0.28, "pronunciation": 0.25, "voice_quality": 0.17},
 }
 
 
@@ -253,9 +288,11 @@ def compute_scores(features: FeatureResult, task: str) -> ScoreBreakdown:
         prosody = score_prosody(features, weight_cv=True)
         pronunciation = score_pronunciation(features)
 
+    voice_quality = score_voice_quality(features)
+
     partial = ScoreBreakdown(
         fluency=fluency, clarity=clarity, rhythm=rhythm,
-        prosody=prosody, voice_quality=None,
+        prosody=prosody, voice_quality=voice_quality,
         pronunciation=pronunciation, overall=0.0,
     )
 

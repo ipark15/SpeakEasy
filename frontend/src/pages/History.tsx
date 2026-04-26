@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Card from "../components/Card"
 import { useAuth } from "../hooks/useAuth"
-import { getHistory, type HistoryData, type SessionDetail } from "../lib/api"
+import { getHistory, getUserReports, downloadReport, type HistoryData, type SessionDetail, type ReportMeta } from "../lib/api"
 
 const MOCK: HistoryData = {
   sessions: [
@@ -64,11 +64,25 @@ export default function History() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [data, setData] = useState<HistoryData | null>(null)
+  const [reports, setReports] = useState<Set<string>>(new Set())
+  const [downloading, setDownloading] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     getHistory(user.id).then(setData).catch(() => setData(MOCK))
+    getUserReports(user.id).then((r) => setReports(new Set(r.map((x) => x.session_id)))).catch(() => {})
   }, [user])
+
+  async function handleDownload(sessionId: string) {
+    setDownloading(sessionId)
+    try {
+      await downloadReport(sessionId)
+      setReports((prev) => new Set(prev).add(sessionId))
+    } catch {
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   if (!data) return (
     <div className="min-h-screen bg-[#f5f3ff]">
@@ -145,7 +159,25 @@ export default function History() {
                     <p className="text-[15px] font-semibold text-[#1e2939]">{s.type}</p>
                     <p className="text-[12px] text-[#6a7282]">{s.created_at}</p>
                   </div>
-                  <span className="text-[28px] font-bold text-[#1e2939]">{s.overall_score}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleDownload(s.id)}
+                      disabled={downloading === s.id}
+                      className="flex items-center gap-1.5 h-[30px] px-3 rounded-[10px] text-[11px] font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+                      style={{
+                        background: reports.has(s.id) ? "rgba(16,163,74,0.1)" : "rgba(67,56,202,0.08)",
+                        color: reports.has(s.id) ? "#16a34a" : "#4338ca",
+                      }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      {downloading === s.id ? "Generating…" : reports.has(s.id) ? "Report ready" : "Get Report"}
+                    </button>
+                    <span className="text-[28px] font-bold text-[#1e2939]">{s.overall_score}</span>
+                  </div>
                 </div>
 
                 {/* Sub-scores */}
