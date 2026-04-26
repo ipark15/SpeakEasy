@@ -3,10 +3,11 @@ import { useNavigate, useParams } from "react-router-dom"
 import { getSession, downloadReport, type SessionData } from "../lib/api"
 
 const DIMS = [
-  { key: "fluency", label: "FLUENCY", color: "#4338ca", bg: "rgba(99,102,241,0.1)" },
-  { key: "clarity", label: "CLARITY", color: "#0284c7", bg: "rgba(191,219,254,0.4)" },
-  { key: "rhythm", label: "RHYTHM", color: "#16a34a", bg: "rgba(167,243,208,0.4)" },
-  { key: "prosody", label: "PAUSE", color: "#ea580c", bg: "rgba(254,215,170,0.4)" },
+  { key: "fluency",       label: "FLUENCY",       color: "#4338ca", bg: "rgba(99,102,241,0.1)" },
+  { key: "clarity",       label: "CLARITY",       color: "#0284c7", bg: "rgba(191,219,254,0.4)" },
+  { key: "rhythm",        label: "RHYTHM",        color: "#16a34a", bg: "rgba(167,243,208,0.4)" },
+  { key: "prosody",       label: "PROSODY",       color: "#ea580c", bg: "rgba(254,215,170,0.4)" },
+  { key: "voice_quality", label: "VOICE",         color: "#7c3aed", bg: "rgba(221,214,254,0.4)" },
 ]
 
 type Tab = "Feedback" | "Breakdown" | "AI Insights"

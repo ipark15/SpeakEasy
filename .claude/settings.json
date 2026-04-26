@@ -46,7 +46,8 @@
       "Bash(kill 69278 69308)",
       "Bash(curl -s -X POST http://localhost:8000/api/session/start -H 'Content-Type: application/json' -d '{\"user_id\":\"test\"}')",
       "Read(//tmp/**)",
-      "Bash(curl -v -X POST http://localhost:8000/api/session/start -H 'Content-Type: application/json' -H 'Origin: http://localhost:5174' -d '{\"user_id\":\"test\"}')"
+      "Bash(curl -v -X POST http://localhost:8000/api/session/start -H 'Content-Type: application/json' -H 'Origin: http://localhost:5174' -d '{\"user_id\":\"test\"}')",
+      "Bash(python3 -m json.tool)"
     ]
   },
   "enabledPlugins": {
