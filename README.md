@@ -21,7 +21,7 @@ SpeakEasy transforms raw audio into structured features and produces visual insi
 | ASR | faster-whisper (`base.en`) |
 | Audio Features | parselmouth (Praat), librosa |
 | Pronunciation | HuBERT embeddings |
-| LLM Feedback | Gemma (`gemma-2-9b-it`) via Google AI Studio |
+| LLM Feedback | Gemma (`gemma-4-31b-it`) via Google AI Studio |
 | Agents | ASI:One Agentverse (uAgents) |
 | Database | Supabase |
 | TTS | ElevenLabs |
