@@ -80,6 +80,11 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
   const today = todayIndex()
 
+  const displayName =
+    localStorage.getItem("display_name") ||
+    user?.email?.split("@")[0] ||
+    "there"
+
   useEffect(() => {
     if (!user) return
     getDashboard(user.id).then(setData).catch(() => setData(MOCK))
@@ -99,7 +104,7 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#f5f3ff]">
+    <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
       <Navbar />
       <div className="max-w-[1088px] mx-auto px-8 py-8 flex flex-col gap-6">
 
@@ -107,7 +112,7 @@ export default function Dashboard() {
         <div>
           <p className="text-[11px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-2">Dashboard</p>
           <h1 className="text-[32px] font-bold text-[#1e2939] font-['DM_Serif_Display'] leading-tight">
-            Welcome back.
+            Welcome back, {displayName}
           </h1>
           <p className="text-[14px] text-[#6a7282] mt-1">Ready to improve your speech today?</p>
         </div>
