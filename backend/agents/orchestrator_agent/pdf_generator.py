@@ -27,7 +27,7 @@ def _score_color(val: int) -> str:
 
 
 def _bar_chart(scores: dict) -> bytes:
-    cats = ["Fluency", "Clarity", "Rhythm", "Prosody", "Voice Quality"]
+    cats = ["Fluency", "Clarity", "Rhythm", "Prosody", "Pronunciation"]
     vals = [scores["fluency"], scores["clarity"], scores["rhythm"],
             scores["prosody"], scores["voice_quality"]]
     bar_colors = [_score_color(v) for v in vals]
@@ -54,7 +54,7 @@ def _bar_chart(scores: dict) -> bytes:
 
 
 def _radar_chart(scores: dict) -> bytes:
-    cats = ["Fluency", "Clarity", "Rhythm", "Prosody", "Voice\nQuality"]
+    cats = ["Fluency", "Clarity", "Rhythm", "Prosody", "Pronun-\nciation"]
     vals = [scores["fluency"], scores["clarity"], scores["rhythm"],
             scores["prosody"], scores["voice_quality"]]
 
@@ -72,47 +72,6 @@ def _radar_chart(scores: dict) -> bytes:
     ax.set_yticks([25, 50, 75, 100])
     ax.set_yticklabels(["25", "50", "75", "100"], fontsize=6, color="gray")
     ax.set_title("Speech Profile", fontweight="bold", fontsize=11, pad=14)
-    plt.tight_layout()
-
-    buf = io.BytesIO()
-    plt.savefig(buf, format="png", dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return buf.read()
-
-
-def _timeline_chart(events: dict, duration: float = 10.0) -> bytes:
-    fig, ax = plt.subplots(figsize=(6.5, 2.2))
-
-    pause_added = False
-    for pause in events.get("pauses", []):
-        label = "Pause" if not pause_added else "_nolegend_"
-        ax.barh(0.65, pause["duration"], left=pause["start"],
-                height=0.28, color="#F44336", alpha=0.8, label=label)
-        ax.text(pause["start"] + pause["duration"] / 2, 0.65,
-                f"{pause['duration']}s", ha="center", va="center",
-                fontsize=7, color="white", fontweight="bold")
-        pause_added = True
-
-    word_added = False
-    for word in events.get("low_confidence_words", []):
-        label = "Low-confidence word" if not word_added else "_nolegend_"
-        ax.scatter(word["time"], 0.25, color="#FF9800", s=90,
-                   zorder=5, label=label)
-        ax.text(word["time"], 0.38, word["word"],
-                ha="center", fontsize=7, color="#E65100")
-        word_added = True
-
-    ax.set_xlim(0, duration)
-    ax.set_ylim(0, 1)
-    ax.set_xlabel("Time (seconds)", fontsize=9)
-    ax.set_yticks([0.25, 0.65])
-    ax.set_yticklabels(["Low-confidence\nwords", "Pauses"], fontsize=8)
-    ax.set_title("Speech Event Timeline", fontweight="bold", fontsize=11)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    if pause_added or word_added:
-        ax.legend(loc="upper right", fontsize=7)
     plt.tight_layout()
 
     buf = io.BytesIO()
@@ -190,7 +149,7 @@ def generate_pdf(assessment: dict, narrative: dict, output_path: str) -> str:
     for label, key in [
         ("Fluency", "fluency"), ("Clarity", "clarity"),
         ("Rhythm", "rhythm"), ("Prosody", "prosody"),
-        ("Voice Quality", "voice_quality"),
+        ("Pronunciation", "voice_quality"),
     ]:
         val = scores[key]
         status = "Good" if val >= 70 else "Fair" if val >= 50 else "Needs Work"
@@ -224,11 +183,6 @@ def generate_pdf(assessment: dict, narrative: dict, output_path: str) -> str:
     ]))
     story.append(chart_row)
     story.append(Spacer(1, 0.1 * inch))
-
-    timeline_img = Image(io.BytesIO(_timeline_chart(assessment["events"])),
-                         width=6.5 * inch, height=1.9 * inch)
-    story.append(timeline_img)
-    story.append(Spacer(1, 0.15 * inch))
 
     # ── narrative sections ──
     narrative_sections = [
