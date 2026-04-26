@@ -187,10 +187,11 @@ def generate_pdf(assessment: dict, narrative: dict, output_path: str) -> str:
     # ── narrative sections ──
     narrative_sections = [
         ("Summary",                      "overall_summary"),
+        ("Data Highlights",              "data_highlights"),
         ("Strengths",                    "strengths"),
         ("Areas for Improvement",        "weaknesses"),
         ("Specific Challenging Moments", "struggled_moments"),
-        ("Improvement Suggestions",      "recommendations"),
+        ("Improvement Exercises",        "recommendations"),
         ("Recommended Next Focus",       "next_focus"),
     ]
     for title, key in narrative_sections:
