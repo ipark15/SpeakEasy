@@ -83,7 +83,7 @@ def get_user_profile(user_id: str):
 
     scores = [s["overall_score"] for s in sessions if s.get("overall_score") is not None]
 
-    full_name = (profile.get("display_name") if profile else None) or "User"
+    full_name = (profile.get("display_name") if profile else None) or ""
 
     if sessions:
         first_dt = datetime.fromisoformat(sessions[0]["created_at"].replace("Z", "+00:00"))

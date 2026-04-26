@@ -64,9 +64,11 @@ export default function Profile() {
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   const [data, setData] = useState<ProfileData | null>(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const [name, setName] = useState(() => localStorage.getItem("display_name") ?? "")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
 
   // ── Password change ───────────────────────────────────────────
   const [pwNew, setPwNew] = useState("")
@@ -77,28 +79,33 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user) return
-    // Seed name from email prefix when nothing is saved in localStorage yet
     if (!localStorage.getItem("display_name")) {
       setName(user.email?.split("@")[0] ?? "")
     }
     getProfile(user.id)
       .then((d) => {
         setData({ ...d, email: user.email ?? "" })
-        setName(d.full_name)
-        localStorage.setItem("display_name", d.full_name)
+        // Only overwrite local name when the backend has a real saved value
+        if (d.full_name) {
+          setName(d.full_name)
+          localStorage.setItem("display_name", d.full_name)
+        }
       })
       .catch(() => {})
+      .finally(() => setLoadingProfile(false))
   }, [user])
 
   async function handleSave() {
     if (!user) return
     setSaving(true)
+    setSaveError("")
+    localStorage.setItem("display_name", name)
     try {
       await updateProfile(user.id, { full_name: name })
-      localStorage.setItem("display_name", name)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
+      setSaveError("Couldn't sync to server — name saved locally")
     } finally {
       setSaving(false)
     }
@@ -127,20 +134,6 @@ export default function Profile() {
   }
 
   const displayEmail = user?.email ?? ""
-
-  if (!data) return (
-    <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
-      <Navbar />
-      <div className="max-w-[760px] mx-auto px-8 py-8 flex flex-col gap-6">
-        <div className="h-8 w-40 rounded-xl bg-[#e0daf7] animate-pulse" />
-        <div className="h-28 rounded-[24px] bg-[#e0daf7] animate-pulse" />
-        <div className="grid grid-cols-3 gap-4">
-          {[0, 1, 2].map(i => <div key={i} className="h-24 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
-        </div>
-        <div className="h-48 rounded-[24px] bg-[#e0daf7] animate-pulse" />
-      </div>
-    </div>
-  )
 
   return (
     <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
@@ -190,7 +183,7 @@ export default function Profile() {
                   <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
                   <line x1="3" y1="10" x2="21" y2="10" />
                 </svg>
-                Joined {data.joined_at}
+                {data?.joined_at ? `Joined ${data.joined_at}` : ""}
               </p>
             </div>
           </div>
@@ -203,11 +196,16 @@ export default function Profile() {
         </div>
 
         {/* Stats */}
+        {loadingProfile ? (
+          <div className="grid grid-cols-3 gap-4">
+            {[0, 1, 2].map(i => <div key={i} className="h-24 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+          </div>
+        ) : (
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Best Score", value: data.best_score, sub: "All time", iconBg: "#c7d2fe", stroke: "#4338ca" },
-            { label: "Improvement", value: `+${data.improvement}`, sub: "Points gained", iconBg: "#d1fae5", stroke: "#065f46" },
-            { label: "Total Tests", value: data.total_tests, sub: "Sessions done", iconBg: "#bfdbfe", stroke: "#1d4ed8" },
+            { label: "Best Score", value: data?.best_score ?? 0, sub: "All time", iconBg: "#c7d2fe", stroke: "#4338ca" },
+            { label: "Improvement", value: `+${data?.improvement ?? 0}`, sub: "Points gained", iconBg: "#d1fae5", stroke: "#065f46" },
+            { label: "Total Tests", value: data?.total_tests ?? 0, sub: "Sessions done", iconBg: "#bfdbfe", stroke: "#1d4ed8" },
           ].map(({ label, value, sub, iconBg, stroke }) => (
             <Card key={label}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: iconBg }}>
@@ -221,6 +219,7 @@ export default function Profile() {
             </Card>
           ))}
         </div>
+        )}
 
         {/* Achievements */}
         <Card>
@@ -282,6 +281,7 @@ export default function Profile() {
             <Button onClick={handleSave} disabled={saving} className="w-full">
               {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
             </Button>
+            {saveError && <p className="text-[12px] text-amber-600">{saveError}</p>}
           </div>
         </Card>
 
