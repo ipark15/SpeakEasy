@@ -33,10 +33,8 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
   const isSpeaking = conversation.isSpeaking
 
   async function handleStart() {
-    // Explicitly request mic before handing off to ElevenLabs SDK
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      stream.getTracks().forEach(t => t.stop())
+      await navigator.mediaDevices.getUserMedia({ audio: true })
       console.log("[ElevenLabs] mic permission granted")
     } catch (err) {
       console.error("[ElevenLabs] mic permission denied:", err)
@@ -147,7 +145,6 @@ export default function TherapistSession() {
 
   useEffect(() => {
     if (!user || !sessionId) return
-
     startTherapistSession(sessionId, user.id)
       .then((data) => {
         setSessionData(data)
@@ -182,7 +179,6 @@ export default function TherapistSession() {
       </nav>
 
       <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 max-w-[480px] mx-auto w-full">
-        {/* Avatar */}
         <div className="relative mb-8">
           <div className="w-[120px] h-[120px] rounded-full flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)" }}>
