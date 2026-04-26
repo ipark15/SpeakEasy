@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 from backend.db import queries as db
 from backend.agents.therapist_agent.prompt_builder import build_system_prompt, build_first_message
+from backend.agents.progress_tracker.agent import _fetch_history
 
 load_dotenv()
 
@@ -82,8 +83,8 @@ def start_therapist_session(req: TherapistSessionRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    history = db.get_history_data(req.user_id)
     assessment_summary = _build_assessment_summary(session)
+    history = _fetch_history(req.user_id, exclude_session_id=req.session_id)
     system_prompt = build_system_prompt(assessment_summary, history)
     first_message = build_first_message(assessment_summary)
 

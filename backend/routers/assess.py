@@ -25,7 +25,7 @@ _ASSESSMENT_AGENT_ADDRESS = _os.getenv("ASSESSMENT_AGENT_ADDRESS", "")
 _AGGREGATE_AGENT_ADDRESS = _os.getenv("AGGREGATE_AGENT_ADDRESS", "")
 
 
-def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
+def _build_assessment_payload(session_id: str, session_data: dict, user_id: str = "") -> dict:
     """Convert raw DB session rows into the 3-task JSON format the orchestrator expects."""
     assessments = session_data.get("assessments", [])
     scores_summary: dict[str, list] = {}
@@ -62,6 +62,7 @@ def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
 
     return {
         "session_id": session_id,
+        "user_id": user_id,
         "assessed_at": datetime.now(timezone.utc).isoformat(),
         "composite_score": round(composite_total / composite_w, 1) if composite_w > 0 else 0.0,
         "scores_summary": {
@@ -72,7 +73,7 @@ def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
     }
 
 
-async def _trigger_assessment_agent(session_id: str, session_data: dict) -> None:
+async def _trigger_assessment_agent(session_id: str, session_data: dict, user_id: str = "") -> None:
     """Forward completed assessment scores to the Assessment Agent on Agentverse."""
     if not _ASSESSMENT_AGENT_ADDRESS:
         return
@@ -81,7 +82,7 @@ async def _trigger_assessment_agent(session_id: str, session_data: dict) -> None
         from uagents.communication import send_message
         from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
 
-        payload = _build_assessment_payload(session_id, session_data)
+        payload = _build_assessment_payload(session_id, session_data, user_id)
         msg = ChatMessage(
             timestamp=datetime.now(timezone.utc),
             msg_id=uuid4(),
@@ -93,7 +94,7 @@ async def _trigger_assessment_agent(session_id: str, session_data: dict) -> None
         logging.getLogger(__name__).warning(f"Assessment agent trigger failed: {e}")
 
 
-async def _trigger_aggregate_agent(session_id: str, session_data: dict) -> None:
+async def _trigger_aggregate_agent(session_id: str, session_data: dict, user_id: str = "") -> None:
     """Forward completed assessment to the Aggregate Agent for cross-session tracking."""
     if not _AGGREGATE_AGENT_ADDRESS:
         return
@@ -102,7 +103,7 @@ async def _trigger_aggregate_agent(session_id: str, session_data: dict) -> None:
         from uagents.communication import send_message
         from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
 
-        payload = _build_assessment_payload(session_id, session_data)
+        payload = _build_assessment_payload(session_id, session_data, user_id)
         msg = ChatMessage(
             timestamp=datetime.now(timezone.utc),
             msg_id=uuid4(),
@@ -276,8 +277,8 @@ async def assess(
                 db.complete_session(session_id, overall)
 
                 # Fire-and-forget: send assessment to orchestrator + aggregate agents
-                asyncio.create_task(_trigger_assessment_agent(session_id, session_data))
-                asyncio.create_task(_trigger_aggregate_agent(session_id, session_data))
+                asyncio.create_task(_trigger_assessment_agent(session_id, session_data, user_id or ""))
+                asyncio.create_task(_trigger_aggregate_agent(session_id, session_data, user_id or ""))
 
         return response
     finally:
