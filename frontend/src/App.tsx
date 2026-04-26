@@ -10,6 +10,7 @@ import LiveSession from "./pages/LiveSession"
 import History from "./pages/History"
 import Profile from "./pages/Profile"
 import Settings from "./pages/Settings"
+import DataPrivacy from "./pages/DataPrivacy"
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/history" element={<Guard><History /></Guard>} />
         <Route path="/profile" element={<Guard><Profile /></Guard>} />
         <Route path="/settings" element={<Guard><Settings /></Guard>} />
+        <Route path="/settings/data" element={<Guard><DataPrivacy /></Guard>} />
       </Routes>
     </BrowserRouter>
   )
