@@ -15,7 +15,6 @@ router = APIRouter()
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_AGENT_ID = os.getenv("ELEVENLABS_AGENT_ID", "")
-ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "")
 ELEVENLABS_BASE = "https://api.elevenlabs.io"
 
 
@@ -95,12 +94,7 @@ def start_therapist_session(req: TherapistSessionRequest):
         patch_resp = httpx.patch(
             f"{ELEVENLABS_BASE}/v1/convai/agents/{ELEVENLABS_AGENT_ID}",
             headers=headers,
-            json={
-                "conversation_config": {
-                    "agent": {"prompt": {"prompt": system_prompt}},
-                    **({"tts": {"voice_id": ELEVENLABS_VOICE_ID}} if ELEVENLABS_VOICE_ID else {}),
-                }
-            },
+            json={"conversation_config": {"agent": {"prompt": {"prompt": system_prompt}}}},
             timeout=30.0,
         )
         patch_resp.raise_for_status()
