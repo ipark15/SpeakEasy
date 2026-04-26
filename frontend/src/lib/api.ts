@@ -1,15 +1,33 @@
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
 
+let _getToken: (() => Promise<string>) | null = null
+
+export function setApiTokenProvider(fn: () => Promise<string>) {
+  _getToken = fn
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!_getToken) return {}
+  try {
+    const token = await _getToken()
+    return { Authorization: `Bearer ${token}` }
+  } catch {
+    return {}
+  }
+}
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`)
+  const headers = await authHeaders()
+  const res = await fetch(`${BASE}${path}`, { headers })
   if (!res.ok) throw new Error(`GET ${path} → ${res.status}`)
   return res.json()
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
+  const headers = await authHeaders()
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
   })
   if (!res.ok) throw new Error(`POST ${path} → ${res.status}`)
@@ -87,7 +105,8 @@ export async function startSession(userId: string): Promise<{ session_id: string
 }
 
 export async function submitAssessment(form: FormData): Promise<AssessmentResponse> {
-  const res = await fetch(`${BASE}/api/assess`, { method: "POST", body: form })
+  const headers = await authHeaders()
+  const res = await fetch(`${BASE}/api/assess`, { method: "POST", headers, body: form })
   if (!res.ok) throw new Error(`POST /api/assess → ${res.status}`)
   return res.json()
 }
@@ -97,7 +116,8 @@ export async function getSession(sessionId: string): Promise<SessionData> {
 }
 
 export async function downloadReport(sessionId: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/report/${sessionId}`)
+  const headers = await authHeaders()
+  const res = await fetch(`${BASE}/api/report/${sessionId}`, { headers })
   if (!res.ok) throw new Error(`GET /api/report/${sessionId} → ${res.status}`)
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)

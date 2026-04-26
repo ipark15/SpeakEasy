@@ -4,9 +4,10 @@ import io
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from backend.auth import require_auth
 
 import backend.db.queries as db
 
@@ -18,14 +19,14 @@ DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 # ── Reports list ──────────────────────────────────────────────
 
 @router.get("/reports/{user_id}")
-def list_reports(user_id: str):
+def list_reports(user_id: str, _auth: dict = Depends(require_auth)):
     return db.get_user_reports(user_id)
 
 
 # ── Dashboard ─────────────────────────────────────────────────
 
 @router.get("/dashboard/{user_id}")
-def get_dashboard(user_id: str):
+def get_dashboard(user_id: str, _auth: dict = Depends(require_auth)):
     raw = db.get_dashboard_data(user_id)
     sessions = raw["sessions"]  # ordered created_at asc
 
@@ -69,14 +70,14 @@ def get_dashboard(user_id: str):
 # ── History ───────────────────────────────────────────────────
 
 @router.get("/history/{user_id}")
-def get_history(user_id: str):
+def get_history(user_id: str, _auth: dict = Depends(require_auth)):
     return db.get_history_data(user_id)
 
 
 # ── Profile ───────────────────────────────────────────────────
 
 @router.get("/profile/{user_id}")
-def get_user_profile(user_id: str):
+def get_user_profile(user_id: str, _auth: dict = Depends(require_auth)):
     raw = db.get_dashboard_data(user_id)
     profile = db.get_profile(user_id)
     sessions = raw["sessions"]  # ordered created_at asc
@@ -108,7 +109,7 @@ class ProfileUpdate(BaseModel):
 
 
 @router.post("/profile")
-def update_profile(body: ProfileUpdate):
+def update_profile(body: ProfileUpdate, _auth: dict = Depends(require_auth)):
     return db.upsert_profile(body.user_id, body.display_name, body.goals)
 
 
@@ -124,7 +125,7 @@ CSV_COLUMNS = [
 
 
 @router.get("/export/{user_id}/csv")
-def export_csv(user_id: str):
+def export_csv(user_id: str, _auth: dict = Depends(require_auth)):
     data = db.get_dashboard_data(user_id)
     if not data["assessments"]:
         raise HTTPException(status_code=404, detail="No assessments found for this user.")
@@ -147,7 +148,7 @@ def export_csv(user_id: str):
 # ── PDF Export ────────────────────────────────────────────────
 
 @router.get("/export/{user_id}/pdf")
-def export_pdf(user_id: str):
+def export_pdf(user_id: str, _auth: dict = Depends(require_auth)):
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch

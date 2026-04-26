@@ -1,27 +1,31 @@
-import { useEffect, useState } from "react"
-import { supabase } from "../lib/supabase"
-import type { User } from "@supabase/supabase-js"
+import { useAuth0 } from "@auth0/auth0-react"
+import { setApiTokenProvider } from "../lib/api"
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const {
+    user: auth0User,
+    isLoading,
+    isAuthenticated,
+    loginWithRedirect,
+    logout,
+    getAccessTokenSilently,
+  } = useAuth0()
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user)
-      setLoading(false)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null)
-    })
-    return () => subscription.unsubscribe()
-  }, [])
+  // Wire up the token provider so all api.ts calls attach the Bearer token
+  if (isAuthenticated) {
+    setApiTokenProvider(getAccessTokenSilently)
+  }
 
-  const signIn = (email: string, password: string) =>
-    supabase.auth.signInWithPassword({ email, password })
-  const signUp = (email: string, password: string) =>
-    supabase.auth.signUp({ email, password })
-  const signOut = () => supabase.auth.signOut()
+  // Normalise to the shape the rest of the app expects (user.id, user.email)
+  const user = auth0User
+    ? { id: auth0User.sub!, email: auth0User.email ?? "", ...auth0User }
+    : null
 
-  return { user, loading, signIn, signUp, signOut }
+  const signIn = () => loginWithRedirect()
+  const signUp = () =>
+    loginWithRedirect({ authorizationParams: { screen_hint: "signup" } })
+  const signOut = () =>
+    logout({ logoutParams: { returnTo: window.location.origin } })
+
+  return { user, loading: isLoading, signIn, signUp, signOut }
 }

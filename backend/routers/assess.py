@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+from backend.auth import require_auth
 from pydantic import BaseModel
 
 from backend.models.schemas import AssessmentResponse, FeatureResult, TranscriptWord
@@ -99,13 +100,14 @@ class SessionStartRequest(BaseModel):
 
 
 @router.post("/session/start")
-def session_start(body: SessionStartRequest):
-    session_id = db.create_session(body.user_id)
+def session_start(body: SessionStartRequest, token: dict = Depends(require_auth)):
+    user_id = token["sub"] if token["sub"] != "dev-user" else body.user_id
+    session_id = db.create_session(user_id)
     return {"session_id": session_id}
 
 
 @router.get("/session/{session_id}")
-def session_get(session_id: str):
+def session_get(session_id: str, _token: dict = Depends(require_auth)):
     from fastapi import HTTPException
     data = db.get_session(session_id)
     if not data:
@@ -126,7 +128,7 @@ def session_get(session_id: str):
 # ── Clinical Report PDF ───────────────────────────────────────
 
 @router.get("/report/{session_id}")
-async def get_report(session_id: str):
+async def get_report(session_id: str, _token: dict = Depends(require_auth)):
     import os
     from fastapi import HTTPException
     from fastapi.responses import FileResponse
@@ -156,6 +158,7 @@ async def assess(
     session_id: Optional[str] = Form(None),
     transcript: Optional[str] = Form(None),
     word_timestamps: Optional[str] = Form(None),
+    token: dict = Depends(require_auth),
 ):
     audio_bytes = await audio.read()
     audio_array = bytes_to_array(audio_bytes)
@@ -229,8 +232,13 @@ async def assess(
             session_id=session_id,
         )
 
+        # JWT sub is authoritative; fall back to form-provided user_id in dev mode
+        effective_user_id = token["sub"] if token.get("sub") != "dev-user" else user_id
+
         # Persist to DB if session context provided
         assessment_id = None
+        if effective_user_id and session_id:
+            user_id = effective_user_id
         if user_id and session_id:
             audio_url = db.upload_audio(session_id, task, audio_bytes)
             assessment_id = db.save_assessment(session_id, user_id, response, audio_url=audio_url)
