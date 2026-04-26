@@ -23,11 +23,54 @@ export type AssessmentResponse = {
   scores: Record<string, number>
 }
 
+export type WordTimestamp = {
+  word: string
+  start: number
+  end: number
+  confidence?: number
+}
+
+export type PauseEvent = {
+  start: number
+  end: number
+  duration: number
+}
+
+export type FillerEvent = {
+  word: string
+  start: number
+  end: number
+}
+
+export type LowConfWord = {
+  word: string
+  confidence: number
+  time: number
+}
+
+export type Assessment = {
+  id: string
+  task: string
+  scores: Record<string, number | null>
+  transcript?: string
+  word_timestamps?: WordTimestamp[]
+  syllable_intervals?: number[]
+  filler_words?: FillerEvent[]
+  low_confidence_words?: LowConfWord[]
+  pauses?: PauseEvent[]
+  pitch_contour?: number[]
+  pitch_times?: number[]
+  wpm?: number | null
+  ddk_rate?: number | null
+  word_error_rate?: number | null
+  tips?: string[]
+}
+
 export type SessionData = {
   id: string
   user_id: string
   overall_score: number
-  assessments: Array<{ task: string; scores: Record<string, number> }>
+  assessments: Assessment[]
 }
 
 export async function startSession(userId: string): Promise<{ session_id: string }> {
