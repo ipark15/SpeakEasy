@@ -247,3 +247,64 @@ def get_dashboard_data(user_id: str) -> dict:
         "goals": profile.get("goals") if profile else None,
         "display_name": profile.get("display_name") if profile else None,
     }
+
+
+def get_history_data(user_id: str) -> dict:
+    """Return per-session sub-score averages for the history page."""
+    from collections import defaultdict
+
+    db = get_client()
+
+    sessions = (
+        db.table("sessions")
+        .select("id, created_at, overall_score")
+        .eq("user_id", user_id)
+        .eq("status", "complete")
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
+        .data
+    )
+
+    if not sessions:
+        return {"sessions": [], "improvement": 0, "best_score": 0}
+
+    session_ids = [s["id"] for s in sessions]
+    assessments = (
+        db.table("assessments")
+        .select("session_id, score_fluency, score_clarity, score_rhythm, score_prosody, score_voice_quality")
+        .in_("session_id", session_ids)
+        .execute()
+        .data
+    )
+
+    by_session: dict = defaultdict(list)
+    for a in assessments:
+        by_session[a["session_id"]].append(a)
+
+    def _avg(vals: list) -> Optional[int]:
+        nums = [v for v in vals if v is not None]
+        return round(sum(nums) / len(nums)) if nums else None
+
+    result_sessions = []
+    for s in sessions:
+        sid = s["id"]
+        tasks = by_session[sid]
+        result_sessions.append({
+            "id": sid,
+            "type": "General",
+            "created_at": s["created_at"][:10],
+            "overall_score": round(s["overall_score"]) if s.get("overall_score") is not None else 0,
+            "fluency": _avg([t.get("score_fluency") for t in tasks]),
+            "clarity": _avg([t.get("score_clarity") for t in tasks]),
+            "rhythm": _avg([t.get("score_rhythm") for t in tasks]),
+            "prosody": _avg([t.get("score_prosody") for t in tasks]),
+            "voice_quality": _avg([t.get("score_voice_quality") for t in tasks]),
+        })
+
+    all_scores = [s["overall_score"] for s in sessions if s.get("overall_score") is not None]
+    best_score = round(max(all_scores)) if all_scores else 0
+    # sessions are desc-ordered: index 0 is newest, -1 is oldest
+    improvement = round(all_scores[0] - all_scores[-1]) if len(all_scores) >= 2 else 0
+
+    return {"sessions": result_sessions, "improvement": improvement, "best_score": best_score}

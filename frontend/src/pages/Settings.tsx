@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Card from "../components/Card"
+import { useAuth } from "../hooks/useAuth"
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -42,6 +43,12 @@ function SettingRow({
 
 export default function Settings() {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
+
+  async function handleSignOut() {
+    await signOut()
+    navigate("/")
+  }
 
   const [reminders, setReminders] = useState(true)
   const [updates, setUpdates] = useState(true)
@@ -204,7 +211,26 @@ export default function Settings() {
           />
           <div className="py-4" style={{ borderTop: "1px solid rgba(229,231,235,0.5)" }}>
             <button
-              className="w-full flex items-center justify-between rounded-[14px] px-4 py-3 transition-colors text-left"
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-between rounded-[14px] px-4 py-3 transition-colors text-left hover:opacity-80"
+              style={{ background: "rgba(238,242,255,0.6)" }}
+            >
+              <div className="flex items-center gap-3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16,17 21,12 16,7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span className="text-[14px] font-medium text-[#4338ca]">Sign Out</span>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2.5">
+                <polyline points="9,18 15,12 9,6" />
+              </svg>
+            </button>
+          </div>
+          <div className="pb-2" style={{ borderTop: "1px solid rgba(229,231,235,0.5)" }}>
+            <button
+              className="w-full flex items-center justify-between rounded-[14px] px-4 py-3 transition-colors text-left hover:opacity-80 mt-2"
               style={{ background: "rgba(254,242,242,0.6)" }}
             >
               <span className="text-[14px] font-medium text-red-500">Delete Account</span>

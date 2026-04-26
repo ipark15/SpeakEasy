@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "./hooks/useAuth"
 import Landing from "./pages/Landing"
+import Auth from "./pages/Auth"
 import Dashboard from "./pages/Dashboard"
 import Assess from "./pages/Assess"
 import Results from "./pages/Results"
@@ -21,6 +22,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<Guard><Dashboard /></Guard>} />
         <Route path="/assess" element={<Guard><Assess /></Guard>} />
         <Route path="/results/:sessionId" element={<Guard><Results /></Guard>} />
