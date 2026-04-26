@@ -1,16 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@800&display=swap');
 
 @theme {
-  --color-app: #f5f3ff;
+  --color-app: #edeaf8;
   --color-primary: #4338ca;
-  --color-text-dark: #1e2939;
-  --color-text-muted: #6a7282;
-  --color-accent-indigo: #c7d2fe;
-  --color-accent-orange: #fed7aa;
-  --color-accent-blue: #bfdbfe;
-  --border-radius-card: 24px;
-  --font-family-sans: "Inter", sans-serif;
+  --color-text-dark: #1e1b4b;
+  --color-text-muted: #9896b0;
+  --color-text-body: #6b6b8a;
+  --border-radius-card: 28px;
+  --font-family-sans: "Outfit", sans-serif;
+  --font-family-serif: "DM Serif Display", serif;
   --font-family-logo: "Outfit", sans-serif;
 }
 
@@ -20,8 +19,8 @@
 
 body {
   margin: 0;
-  background-color: #f5f3ff;
-  font-family: "Inter", sans-serif;
+  background-color: #edeaf8;
+  font-family: "Outfit", sans-serif;
 }
 
 #root {

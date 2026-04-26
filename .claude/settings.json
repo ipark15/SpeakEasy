@@ -11,7 +11,10 @@
       "Bash(git -C /Users/isaiah/SpeakEasy checkout -b \"dev-a\")",
       "Bash(git -C /Users/isaiah/SpeakEasy add frontend/ .gitignore)",
       "Bash(git -C /Users/isaiah/SpeakEasy commit -m ' *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(git -C /Users/isaiah/SpeakEasy add frontend/src/pages/Landing.tsx frontend/src/pages/Assess.tsx frontend/src/pages/Results.tsx)",
+      "Bash(python3)"
     ]
   },
   "enabledPlugins": {

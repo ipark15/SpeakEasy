@@ -7,33 +7,27 @@ import { startSession, submitAssessment } from "../lib/api"
 const STEPS = [
   {
     task: "read_sentence",
-    label: "Exercise 01 - Type 1",
-    subtitle: "Speech Exercise",
-    instruction: "What do you use for writing?",
-    prompt: "Please call Stella and ask her to bring these things with her from the store.",
-    hintWords: ["Please", "call", "Stella", "bring", "things", "store"],
+    navLabel: "Exercise 01 — Type 1",
+    heading: "Type 1",
+    exerciseLabel: "Exercise 1 of 3",
+    instruction: "Please read the following sentence aloud as clearly as you can.",
     duration: 10,
-    iconBg: "#c7d2fe",
   },
   {
     task: "pataka",
-    label: "Exercise 02 - Type 2",
-    subtitle: "Speech Exercise",
-    instruction: "Repeat as fast and clearly as you can:",
-    prompt: "pa-ta-ka",
-    hintWords: ["pa", "ta", "ka", "rhythm", "speed", "clarity"],
+    navLabel: "Exercise 02 — Type 2",
+    heading: "Type 2",
+    exerciseLabel: "Exercise 2 of 3",
+    instruction: `Please repeat "pa-ta-ka" as clearly and consistently as you can.`,
     duration: 8,
-    iconBg: "#fed7aa",
   },
   {
     task: "free_speech",
-    label: "Exercise 03 - Type 3",
-    subtitle: "Speech Exercise",
-    instruction: "Tell us about your day:",
-    prompt: "Tell me one thing you did yesterday.",
-    hintWords: ["yesterday", "did", "morning", "evening", "activity", "story"],
+    navLabel: "Exercise 03 — Type 3",
+    heading: "Type 3",
+    exerciseLabel: "Exercise 3 of 3",
+    instruction: "Tell us about one thing you did yesterday, speaking naturally.",
     duration: 20,
-    iconBg: "#bfdbfe",
   },
 ]
 
@@ -57,15 +51,11 @@ export default function Assess() {
     if (isRecording) {
       autoStopRef.current = setTimeout(() => stop(), STEPS[step].duration * 1000)
     }
-    return () => {
-      if (autoStopRef.current) clearTimeout(autoStopRef.current)
-    }
+    return () => { if (autoStopRef.current) clearTimeout(autoStopRef.current) }
   }, [isRecording])
 
   useEffect(() => {
-    if (blob && !isRecording && sessionId && user) {
-      handleSubmit(blob)
-    }
+    if (blob && !isRecording && sessionId && user) handleSubmit(blob)
   }, [blob])
 
   async function handleSubmit(audio: Blob) {
@@ -78,7 +68,6 @@ export default function Assess() {
       form.append("user_id", user!.id)
       form.append("session_id", sessionId!)
       await submitAssessment(form)
-
       if (step === 2) {
         navigate(`/results/${sessionId}`)
       } else {
@@ -93,21 +82,16 @@ export default function Assess() {
   }
 
   const current = STEPS[step]
-  const progress = Math.round(((step + 1) / 3) * 100)
 
   return (
-    <div className="min-h-screen bg-[#f5f3ff] flex flex-col">
-      {/* Exercise header */}
-      <div
-        className="h-[93px] px-8 flex items-center justify-between shrink-0"
-        style={{ background: "rgba(255,255,255,0.7)", borderBottom: "1px solid rgba(229,231,235,0.4)" }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-[16px] flex items-center justify-center shrink-0"
-            style={{ background: current.iconBg }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+    <div className="min-h-screen bg-[#edeaf8] flex flex-col">
+      {/* Nav */}
+      <div className="relative shrink-0"
+        style={{ background: "rgba(255,255,255,0.55)", borderBottom: "1px solid rgba(255,255,255,0.6)" }}>
+        <div className="h-[74px] max-w-[1100px] mx-auto px-8 flex items-center gap-4">
+          <div className="w-[38px] h-[38px] bg-[#eef2ff] rounded-[12px] flex items-center justify-center shrink-0"
+            style={{ border: "1px solid rgba(99,102,241,0.1)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
               <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
               <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
               <line x1="12" y1="18" x2="12" y2="22"/>
@@ -115,114 +99,88 @@ export default function Assess() {
             </svg>
           </div>
           <div>
-            <p className="text-[24px] font-normal text-[#1e2939] tracking-[0.07px] leading-[36px]">{current.label}</p>
-            <p className="text-[12px] text-[#6a7282] leading-[16px]">{current.subtitle}</p>
+            <p className="font-['Outfit'] font-semibold text-[13px] text-[#1e1b4b] leading-none mb-0.5">{current.navLabel}</p>
+            <p className="font-['Outfit'] font-normal text-[11px] text-[#9896b0] leading-none">Speech Assessment</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-[14px] bg-[rgba(243,244,246,0.6)] flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6a7282" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-          </div>
-          <div className="w-9 h-9 rounded-[14px] bg-[rgba(243,244,246,0.6)] flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6a7282" strokeWidth="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-            </svg>
-          </div>
+        {/* Top progress bar — 3 segments */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] flex gap-[3px]"
+          style={{ background: "rgba(99,102,241,0.1)" }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex-1 h-full rounded-[4px] transition-all duration-500"
+              style={{ background: i <= step ? "linear-gradient(90deg, #6366f1, #4338ca)" : "rgba(67,56,202,0.12)" }} />
+          ))}
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div
-        className="h-[4px] rounded-full mx-8 mt-4"
-        style={{ background: "rgba(229,231,235,0.5)" }}
-      >
-        <div
-          className="h-full bg-[#4338ca] rounded-full transition-all duration-500"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      {/* Main */}
+      <div className="flex-1 flex items-center justify-center px-8 py-16">
+        <div className="w-[520px] rounded-[28px] p-10"
+          style={{ background: "rgba(255,255,255,0.82)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0px 4px 12px rgba(99,102,241,0.08)" }}>
 
-      {/* Main card */}
-      <div className="flex-1 flex items-center justify-center px-8 py-8">
-        <div
-          className="w-full max-w-[448px] rounded-[24px] p-8"
-          style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(229,231,235,0.3)" }}
-        >
-          {/* Question label */}
-          <div className="flex items-center gap-2 mb-4">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6a7282" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            <p className="text-[14px] text-[#1e2939] tracking-[-0.15px]">{current.instruction}</p>
+          {/* Inner progress dots */}
+          <div className="flex gap-[6px] mb-8">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex-1 h-1 rounded-[8px] transition-all duration-500"
+                style={{ background: i <= step ? "#4338ca" : "rgba(67,56,202,0.12)" }} />
+            ))}
           </div>
 
-          {/* Hint words */}
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 bg-[#fed7aa] rounded-full flex items-center justify-center shrink-0">
-                <span className="text-[#ea580c] text-[12px] font-normal leading-none">!</span>
-              </div>
-              <span className="text-[12px] text-[#4a5565]">Hint Words</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {current.hintWords.map((word) => (
-                <span
-                  key={word}
-                  className="h-7 px-3 rounded-full text-[12px] text-[#364153] flex items-center"
-                  style={{ background: "rgba(245,243,255,0.5)" }}
-                >
-                  {word}
-                </span>
-              ))}
-            </div>
+          {/* Step label */}
+          <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1.2px] uppercase mb-3">
+            {current.exerciseLabel}
+          </p>
+
+          {/* Heading */}
+          <h1 className="font-['DM_Serif_Display'] text-[28px] text-[#1e1b4b] mb-6">{current.heading}</h1>
+
+          {/* Instruction box */}
+          <div className="bg-[#f8f7ff] rounded-[18px] p-4 mb-4 flex gap-3 items-start">
+            <svg className="shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9896b0" strokeWidth="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p className="font-['Outfit'] font-normal text-[14px] leading-[22px] text-[#1e1b4b]">{current.instruction}</p>
           </div>
 
           {/* Mic area */}
-          <div
-            className="w-full h-[192px] rounded-[24px] flex items-center justify-center mb-4"
-            style={{ background: "rgba(245,243,255,0.5)" }}
-          >
+          <div className="bg-[#f8f7ff] rounded-[20px] h-[140px] flex flex-col items-center justify-center gap-3 mb-6">
             {isRecording ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-16 h-16 bg-[#4338ca] rounded-full flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <>
+                <div className="w-12 h-12 bg-[#4338ca] rounded-full flex items-center justify-center animate-pulse"
+                  style={{ boxShadow: "0px 8px 16px rgba(67,56,202,0.32)" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                     <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
                     <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
                     <line x1="12" y1="18" x2="12" y2="22"/>
                     <line x1="8" y1="22" x2="16" y2="22"/>
                   </svg>
                 </div>
-                <p className="text-[24px] font-bold text-[#4338ca] tabular-nums">{seconds}s</p>
-                <p className="text-[12px] text-[#6a7282]">of {current.duration}s max</p>
-              </div>
+                <p className="font-['DM_Serif_Display'] text-[28px] text-[#4338ca]">{seconds}s</p>
+              </>
             ) : submitting ? (
-              <p className="text-[14px] text-[#6a7282]">Analyzing…</p>
+              <p className="font-['Outfit'] font-normal text-[13px] text-[#9896b0]">Analysing…</p>
             ) : (
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5">
-                <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
-                <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
-                <line x1="12" y1="18" x2="12" y2="22"/>
-                <line x1="8" y1="22" x2="16" y2="22"/>
-              </svg>
+              <>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d4d0ee" strokeWidth="1.5">
+                  <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                  <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                  <line x1="12" y1="18" x2="12" y2="22"/>
+                  <line x1="8" y1="22" x2="16" y2="22"/>
+                </svg>
+                <p className="font-['Outfit'] font-normal text-[12px] text-[#9896b0]">Press the button below to start</p>
+              </>
             )}
           </div>
 
-          {error && <p className="text-sm text-red-500 mb-3 text-center">{error}</p>}
+          {error && <p className="font-['Outfit'] text-sm text-red-500 text-center mb-4">{error}</p>}
 
-          {/* Action button */}
+          {/* Button */}
           {!isRecording && !submitting && (
-            <button
-              onClick={start}
-              disabled={!sessionId}
-              className="w-full h-14 bg-[#4338ca] text-white rounded-[16px] flex items-center justify-center gap-3 text-[16px] tracking-[-0.31px] hover:bg-[#3730a3] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <button onClick={start} disabled={!sessionId}
+              className="w-full h-[54px] bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] rounded-[18px] flex items-center justify-center gap-2 cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50"
+              style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
                 <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
                 <line x1="12" y1="18" x2="12" y2="22"/>
@@ -233,16 +191,15 @@ export default function Assess() {
           )}
 
           {isRecording && (
-            <button
-              onClick={stop}
-              className="w-full h-14 border border-[rgba(209,213,220,0.5)] bg-white/70 text-[#1e2939] rounded-[16px] text-[16px] tracking-[-0.31px] hover:bg-gray-50 transition-colors cursor-pointer"
-            >
+            <button onClick={stop}
+              className="w-full h-[54px] font-['Outfit'] font-semibold text-[15px] text-[#4338ca] rounded-[18px] cursor-pointer transition-colors"
+              style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(99,102,241,0.2)" }}>
               Stop Early
             </button>
           )}
 
-          <p className="text-[12px] text-[#6a7282] text-center mt-3">
-            Press button and speak clearly
+          <p className="font-['Outfit'] font-normal text-[12px] text-[#9896b0] text-center mt-4">
+            Speak clearly and at a natural pace
           </p>
         </div>
       </div>
