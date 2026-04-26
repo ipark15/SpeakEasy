@@ -26,7 +26,7 @@ asi1_client = OpenAI(
 )
 
 agent = Agent(
-    name="speechscore_orchestrator",
+    name="speakeasy_orchestrator",
     seed=os.getenv("AGENT_SEED", "speechscore_orchestrator_unique_seed_phrase"),
     port=8001,
     mailbox=True,

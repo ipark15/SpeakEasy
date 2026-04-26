@@ -9,6 +9,7 @@ Usage:
 """
 
 import json
+import os
 import sys
 import threading
 from datetime import datetime, timezone
@@ -72,15 +73,8 @@ CHUNK = 1024
 
 def record_until_enter(max_seconds: int) -> np.ndarray:
     pa = pyaudio.PyAudio()
-    # Prefer MacBook built-in mic — AirPods Bluetooth degrades to SCO (8kHz internally)
-    device_index = None
-    for i in range(pa.get_device_count()):
-        d = pa.get_device_info_by_index(i)
-        if d["maxInputChannels"] > 0 and "MacBook" in d["name"]:
-            device_index = i
-            break
-    device_info = pa.get_device_info_by_index(device_index) if device_index is not None \
-                  else pa.get_default_input_device_info()
+    device_info = pa.get_default_input_device_info()
+    device_index = device_info["index"]
     native_rate = int(device_info["defaultSampleRate"])
 
     stream = pa.open(
@@ -391,7 +385,8 @@ def save_assessment_json(results: list[dict]) -> None:
         for dim, vals in payload["scores_summary"].items()
     }
 
-    out_path = f"assessment_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+    os.makedirs("backend/data", exist_ok=True)
+    out_path = f"backend/data/assessment_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
     with open(out_path, "w") as f_out:
         json.dump(payload, f_out, indent=2)
     print(f"  Assessment saved → {out_path}\n")
