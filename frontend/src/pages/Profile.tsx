@@ -68,6 +68,7 @@ export default function Profile() {
   const [name, setName] = useState(() => localStorage.getItem("display_name") ?? "")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
 
   // ── Password change ───────────────────────────────────────────
   const [pwNew, setPwNew] = useState("")
@@ -97,12 +98,14 @@ export default function Profile() {
   async function handleSave() {
     if (!user) return
     setSaving(true)
+    setSaveError("")
+    localStorage.setItem("display_name", name)
     try {
       await updateProfile(user.id, { full_name: name })
-      localStorage.setItem("display_name", name)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
+      setSaveError("Couldn't sync to server — name saved locally")
     } finally {
       setSaving(false)
     }
@@ -180,7 +183,7 @@ export default function Profile() {
                   <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
                   <line x1="3" y1="10" x2="21" y2="10" />
                 </svg>
-                Joined {data.joined_at}
+                {data?.joined_at ? `Joined ${data.joined_at}` : ""}
               </p>
             </div>
           </div>
@@ -278,6 +281,7 @@ export default function Profile() {
             <Button onClick={handleSave} disabled={saving} className="w-full">
               {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
             </Button>
+            {saveError && <p className="text-[12px] text-amber-600">{saveError}</p>}
           </div>
         </Card>
 
