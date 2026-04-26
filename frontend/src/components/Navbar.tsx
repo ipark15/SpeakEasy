@@ -8,20 +8,17 @@ export default function Navbar({ showActions = true }: NavbarProps) {
   const navigate = useNavigate()
 
   return (
-    <nav
-      style={{ background: "rgba(255,255,255,0.7)", borderBottom: "1px solid rgba(229,231,235,0.5)" }}
-      className="sticky top-0 z-50 backdrop-blur-sm px-6 py-4 flex items-center justify-between"
-    >
+    <nav className="sp-nav sticky top-0 z-50 backdrop-blur-sm px-6 py-4 flex items-center justify-between">
       <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-        <div className="w-8 h-8 bg-[#4338ca] rounded-lg flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-            <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
-            <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
-            <line x1="12" y1="18" x2="12" y2="22"/>
-            <line x1="8" y1="22" x2="16" y2="22"/>
+
+        <div className="flex items-end gap-0.5">
+          <span className="font-['Outfit'] font-extrabold text-[27px] leading-[27px] text-[#4338ca] tracking-[-0.54px]">SpeakEas</span>
+          <svg width="22" height="36" viewBox="0 0 22 27" fill="none">
+            <path d="M11 3a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z" fill="#4338ca"/>
+            <path d="M18 13v1a7 7 0 0 1-14 0v-1" stroke="#4338ca" strokeWidth="3" strokeLinecap="round"/>
+            <line x1="11" y1="21" x2="11" y2="27" stroke="#4338ca" strokeWidth="3" strokeLinecap="round"/>
           </svg>
         </div>
-        <span className="font-['Outfit'] font-extrabold text-xl text-[#1e2939]">SpeakEasy</span>
       </div>
 
       {showActions && (

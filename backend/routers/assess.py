@@ -95,10 +95,20 @@ def session_start(body: SessionStartRequest):
 
 @router.get("/session/{session_id}")
 def session_get(session_id: str):
+    from fastapi import HTTPException
     data = db.get_session(session_id)
     if not data:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Session not found.")
+    for a in data.get("assessments", []):
+        a["scores"] = {
+            "fluency":       a.get("score_fluency"),
+            "clarity":       a.get("score_clarity"),
+            "rhythm":        a.get("score_rhythm"),
+            "prosody":       a.get("score_prosody"),
+            "voice_quality": a.get("score_voice_quality"),
+            "pronunciation": a.get("score_pronunciation"),
+            "overall":       a.get("score_overall"),
+        }
     return data
 
 

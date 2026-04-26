@@ -63,12 +63,25 @@ function LineChart({ sessions }: { sessions: SessionDetail[] }) {
 export default function History() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [data, setData] = useState<HistoryData>(MOCK)
+  const [data, setData] = useState<HistoryData | null>(null)
 
   useEffect(() => {
     if (!user) return
-    getHistory(user.id).then(setData).catch(() => {})
+    getHistory(user.id).then(setData).catch(() => setData(MOCK))
   }, [user])
+
+  if (!data) return (
+    <div className="min-h-screen bg-[#f5f3ff]">
+      <Navbar />
+      <div className="max-w-[760px] mx-auto px-8 py-8 flex flex-col gap-6">
+        <div className="h-8 w-40 rounded-xl bg-[#e0daf7] animate-pulse" />
+        <div className="grid grid-cols-3 gap-4">
+          {[0,1,2].map(i => <div key={i} className="h-24 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+        </div>
+        {[0,1,2].map(i => <div key={i} className="h-28 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[#f5f3ff]">

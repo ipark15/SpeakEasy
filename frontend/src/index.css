@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+/* Enable class-based dark mode for dark: variants */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-app: #edeaf8;
   --color-primary: #4338ca;
@@ -17,12 +20,59 @@
   box-sizing: border-box;
 }
 
+html {
+  background-color: #f5f3ff;
+}
+
 body {
   margin: 0;
-  background-color: #edeaf8;
+  background-color: #f5f3ff;
   font-family: "Outfit", sans-serif;
+}
+
+html.dark body {
+  background-color: #0f0e1a;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* ── Shared component tokens ──────────────────────────────── */
+
+.sp-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(229, 231, 235, 0.3);
+}
+html.dark .sp-card {
+  background: rgba(30, 27, 74, 0.65);
+  border: 1px solid rgba(99, 102, 241, 0.18);
+}
+
+.sp-nav {
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+}
+html.dark .sp-nav {
+  background: rgba(15, 14, 26, 0.88);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+/* ── Dark mode text overrides ─────────────────────────────── */
+/* Targets Tailwind arbitrary-value classes without touching every JSX file */
+
+html.dark [class~="text-[#1e2939]"],
+html.dark [class~="text-[#1e1b4b]"] {
+  color: #e8e6f0;
+}
+
+html.dark [class~="text-[#6a7282]"],
+html.dark [class~="text-[#6b6b8a]"],
+html.dark [class~="text-[#6b7280]"] {
+  color: #9896b0;
+}
+
+html.dark [class~="text-[#9ca3af]"],
+html.dark [class~="text-[#9896b0]"] {
+  color: #6b7280;
 }

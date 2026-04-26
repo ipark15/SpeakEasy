@@ -1,7 +1,10 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Card from "../components/Card"
+import Button from "../components/Button"
+import { useAuth } from "../hooks/useAuth"
+import { supabase } from "../lib/supabase"
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -24,13 +27,19 @@ function SettingRow({
   label,
   sub,
   right,
+  onClick,
 }: {
   label: string
   sub?: string
   right: React.ReactNode
+  onClick?: () => void
 }) {
   return (
-    <div className="flex items-center justify-between py-4" style={{ borderTop: "1px solid rgba(229,231,235,0.5)" }}>
+    <div
+      className={`flex items-center justify-between py-4 ${onClick ? "cursor-pointer" : ""}`}
+      style={{ borderTop: "1px solid rgba(229,231,235,0.5)" }}
+      onClick={onClick}
+    >
       <div>
         <p className="text-[14px] font-medium text-[#1e2939]">{label}</p>
         {sub && <p className="text-[12px] text-[#6a7282] mt-0.5">{sub}</p>}
@@ -42,13 +51,86 @@ function SettingRow({
 
 export default function Settings() {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
 
-  const [reminders, setReminders] = useState(true)
-  const [updates, setUpdates] = useState(true)
-  const [darkMode, setDarkMode] = useState(false)
+  // ── Notifications ─────────────────────────────────────────────
+  const [reminders, setReminders] = useState(() => localStorage.getItem("pref_reminders") !== "false")
+  const [updates, setUpdates] = useState(() => localStorage.getItem("pref_updates") !== "false")
+  useEffect(() => { localStorage.setItem("pref_reminders", String(reminders)) }, [reminders])
+  useEffect(() => { localStorage.setItem("pref_updates", String(updates)) }, [updates])
+
+  // ── Appearance ────────────────────────────────────────────────
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem("pref_dark") === "true")
+  useEffect(() => {
+    localStorage.setItem("pref_dark", String(darkMode))
+    document.documentElement.classList.toggle("dark", darkMode)
+  }, [darkMode])
+
+  // ── Microphone picker ─────────────────────────────────────────
+  const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedMicId, setSelectedMicId] = useState(() => localStorage.getItem("pref_mic_id") ?? "")
+  const [showMicPicker, setShowMicPicker] = useState(false)
+
+  async function openMicPicker() {
+    if (showMicPicker) { setShowMicPicker(false); return }
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true })
+      const all = await navigator.mediaDevices.enumerateDevices()
+      setMicDevices(all.filter((d) => d.kind === "audioinput"))
+      setShowMicPicker(true)
+    } catch {
+      setMicDevices([])
+      setShowMicPicker(true)
+    }
+  }
+
+  function selectMic(deviceId: string) {
+    setSelectedMicId(deviceId)
+    localStorage.setItem("pref_mic_id", deviceId)
+    setShowMicPicker(false)
+  }
+
+  function micLabel() {
+    if (selectedMicId && micDevices.length > 0) {
+      const dev = micDevices.find((d) => d.deviceId === selectedMicId)
+      if (dev?.label) return dev.label
+    }
+    const stored = localStorage.getItem("pref_mic_id")
+    return stored ? "Custom microphone selected" : "Default system microphone"
+  }
+
+  // ── Password change ───────────────────────────────────────────
+  const [showPwForm, setShowPwForm] = useState(false)
+  const [pwNew, setPwNew] = useState("")
+  const [pwConfirm, setPwConfirm] = useState("")
+  const [pwError, setPwError] = useState("")
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwSaved, setPwSaved] = useState(false)
+
+  async function handlePasswordChange() {
+    setPwError("")
+    if (pwNew.length < 8) { setPwError("Password must be at least 8 characters"); return }
+    if (pwNew !== pwConfirm) { setPwError("Passwords do not match"); return }
+    setPwSaving(true)
+    const { error } = await supabase.auth.updateUser({ password: pwNew })
+    setPwSaving(false)
+    if (error) {
+      setPwError(error.message)
+    } else {
+      setPwSaved(true)
+      setPwNew("")
+      setPwConfirm("")
+      setTimeout(() => { setPwSaved(false); setShowPwForm(false) }, 2000)
+    }
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    navigate("/")
+  }
 
   return (
-    <div className="min-h-screen bg-[#f5f3ff]">
+    <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
       <Navbar />
       <div className="max-w-[640px] mx-auto px-8 py-8 flex flex-col gap-6">
 
@@ -65,7 +147,7 @@ export default function Settings() {
           </button>
           <p className="text-[11px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-2">Preferences</p>
           <h1 className="text-[32px] font-bold text-[#1e2939] font-['DM_Serif_Display'] leading-tight">
-            Settings.
+            Settings
           </h1>
         </div>
 
@@ -87,14 +169,46 @@ export default function Settings() {
 
           <SettingRow
             label="Microphone Input"
-            sub="Default system microphone"
+            sub={micLabel()}
             right={
-              <button className="text-[13px] font-semibold text-[#4338ca] hover:underline">Change</button>
+              <button
+                onClick={(e) => { e.stopPropagation(); openMicPicker() }}
+                className="text-[13px] font-semibold text-[#4338ca] hover:underline"
+              >
+                {showMicPicker ? "Cancel" : "Change"}
+              </button>
             }
           />
+
+          {showMicPicker && (
+            <div className="flex flex-col gap-2 pb-3 pt-1">
+              {micDevices.length === 0 ? (
+                <p className="text-[13px] text-[#6a7282] px-1">
+                  No microphone devices found. Check browser permissions.
+                </p>
+              ) : (
+                micDevices.map((dev, i) => (
+                  <button
+                    key={dev.deviceId}
+                    onClick={() => selectMic(dev.deviceId)}
+                    className="w-full text-left px-4 py-2.5 rounded-[12px] text-[13px] transition-colors"
+                    style={{
+                      background: selectedMicId === dev.deviceId ? "#eef2ff" : "rgba(245,243,255,0.5)",
+                      border: `1.5px solid ${selectedMicId === dev.deviceId ? "#4338ca" : "transparent"}`,
+                      color: selectedMicId === dev.deviceId ? "#4338ca" : "#1e2939",
+                      fontWeight: selectedMicId === dev.deviceId ? 600 : 400,
+                    }}
+                  >
+                    {dev.label || `Microphone ${i + 1}`}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
           <SettingRow
             label="Recording Volume"
-            sub="Current: 75%"
+            sub="Controlled by system volume"
             right={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
                 <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5" />
@@ -186,25 +300,88 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Change Password */}
           <SettingRow
             label="Change Password"
+            sub={showPwForm ? "Enter a new password below" : undefined}
+            onClick={() => setShowPwForm((v) => !v)}
             right={
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5">
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5"
+                style={{ transform: showPwForm ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}
+              >
                 <polyline points="9,18 15,12 9,6" />
               </svg>
             }
           />
+
+          {showPwForm && (
+            <div className="flex flex-col gap-3 pb-4 pt-1">
+              <input
+                type="password"
+                placeholder="New password"
+                value={pwNew}
+                onChange={(e) => setPwNew(e.target.value)}
+                className="w-full px-4 py-3 rounded-[14px] text-[14px] text-[#1e2939] outline-none transition-all"
+                style={{ border: "1.5px solid rgba(229,231,235,0.8)", background: "white" }}
+                onFocus={(e) => (e.target.style.borderColor = "#4338ca")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(229,231,235,0.8)")}
+              />
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={pwConfirm}
+                onChange={(e) => setPwConfirm(e.target.value)}
+                className="w-full px-4 py-3 rounded-[14px] text-[14px] text-[#1e2939] outline-none transition-all"
+                style={{ border: "1.5px solid rgba(229,231,235,0.8)", background: "white" }}
+                onFocus={(e) => (e.target.style.borderColor = "#4338ca")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(229,231,235,0.8)")}
+              />
+              {pwError && <p className="text-[12px] text-red-500">{pwError}</p>}
+              <Button onClick={handlePasswordChange} disabled={pwSaving} className="w-full text-[13px] py-2.5">
+                {pwSaved ? "Password updated!" : pwSaving ? "Updating…" : "Update Password"}
+              </Button>
+            </div>
+          )}
+
+          {/* Data & Privacy */}
           <SettingRow
             label="Data & Privacy"
+            sub="Export data, manage your account"
+            onClick={() => navigate("/settings/data")}
             right={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2.5">
                 <polyline points="9,18 15,12 9,6" />
               </svg>
             }
           />
+
+          {/* Sign Out */}
           <div className="py-4" style={{ borderTop: "1px solid rgba(229,231,235,0.5)" }}>
             <button
-              className="w-full flex items-center justify-between rounded-[14px] px-4 py-3 transition-colors text-left"
+              onClick={handleSignOut}
+              className="w-full flex items-center justify-between rounded-[14px] px-4 py-3 transition-colors text-left hover:opacity-80"
+              style={{ background: "rgba(238,242,255,0.6)" }}
+            >
+              <div className="flex items-center gap-3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16,17 21,12 16,7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span className="text-[14px] font-medium text-[#4338ca]">Sign Out</span>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2.5">
+                <polyline points="9,18 15,12 9,6" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Delete Account */}
+          <div className="pb-2" style={{ borderTop: "1px solid rgba(229,231,235,0.5)" }}>
+            <button
+              onClick={() => navigate("/settings/data")}
+              className="w-full flex items-center justify-between rounded-[14px] px-4 py-3 transition-colors text-left hover:opacity-80 mt-2"
               style={{ background: "rgba(254,242,242,0.6)" }}
             >
               <span className="text-[14px] font-medium text-red-500">Delete Account</span>

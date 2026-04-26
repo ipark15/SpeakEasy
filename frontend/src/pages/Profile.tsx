@@ -1,19 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Card from "../components/Card"
 import Button from "../components/Button"
 import { useAuth } from "../hooks/useAuth"
+import { supabase } from "../lib/supabase"
 import { getProfile, updateProfile, type ProfileData } from "../lib/api"
-
-const MOCK: ProfileData = {
-  full_name: "Demo User",
-  email: "demo@speakeasy.app",
-  joined_at: "April 2026",
-  best_score: 87,
-  improvement: 14,
-  total_tests: 12,
-}
 
 const BADGES = [
   {
@@ -69,17 +61,31 @@ const BADGES = [
 export default function Profile() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [data, setData] = useState<ProfileData>(MOCK)
-  const [name, setName] = useState(MOCK.full_name)
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  const [data, setData] = useState<ProfileData | null>(null)
+  const [name, setName] = useState(() => localStorage.getItem("display_name") ?? "")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // ── Password change ───────────────────────────────────────────
+  const [pwNew, setPwNew] = useState("")
+  const [pwConfirm, setPwConfirm] = useState("")
+  const [pwError, setPwError] = useState("")
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwSaved, setPwSaved] = useState(false)
+
   useEffect(() => {
     if (!user) return
+    // Seed name from email prefix when nothing is saved in localStorage yet
+    if (!localStorage.getItem("display_name")) {
+      setName(user.email?.split("@")[0] ?? "")
+    }
     getProfile(user.id)
       .then((d) => {
-        setData(d)
+        setData({ ...d, email: user.email ?? "" })
         setName(d.full_name)
+        localStorage.setItem("display_name", d.full_name)
       })
       .catch(() => {})
   }, [user])
@@ -89,6 +95,7 @@ export default function Profile() {
     setSaving(true)
     try {
       await updateProfile(user.id, { full_name: name })
+      localStorage.setItem("display_name", name)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch {
@@ -97,8 +104,46 @@ export default function Profile() {
     }
   }
 
+  function handleEditProfile() {
+    nameInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    setTimeout(() => nameInputRef.current?.focus(), 300)
+  }
+
+  async function handlePasswordChange() {
+    setPwError("")
+    if (pwNew.length < 8) { setPwError("Password must be at least 8 characters"); return }
+    if (pwNew !== pwConfirm) { setPwError("Passwords do not match"); return }
+    setPwSaving(true)
+    const { error } = await supabase.auth.updateUser({ password: pwNew })
+    setPwSaving(false)
+    if (error) {
+      setPwError(error.message)
+    } else {
+      setPwSaved(true)
+      setPwNew("")
+      setPwConfirm("")
+      setTimeout(() => setPwSaved(false), 3000)
+    }
+  }
+
+  const displayEmail = user?.email ?? ""
+
+  if (!data) return (
+    <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
+      <Navbar />
+      <div className="max-w-[760px] mx-auto px-8 py-8 flex flex-col gap-6">
+        <div className="h-8 w-40 rounded-xl bg-[#e0daf7] animate-pulse" />
+        <div className="h-28 rounded-[24px] bg-[#e0daf7] animate-pulse" />
+        <div className="grid grid-cols-3 gap-4">
+          {[0, 1, 2].map(i => <div key={i} className="h-24 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+        </div>
+        <div className="h-48 rounded-[24px] bg-[#e0daf7] animate-pulse" />
+      </div>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen bg-[#f5f3ff]">
+    <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
       <Navbar />
       <div className="max-w-[760px] mx-auto px-8 py-8 flex flex-col gap-6">
 
@@ -115,7 +160,7 @@ export default function Profile() {
           </button>
           <p className="text-[11px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-2">Profile</p>
           <h1 className="text-[32px] font-bold text-[#1e2939] font-['DM_Serif_Display'] leading-tight">
-            My account.
+            My account
           </h1>
         </div>
 
@@ -131,13 +176,13 @@ export default function Profile() {
               </svg>
             </div>
             <div>
-              <h2 className="text-[20px] font-bold text-white">{data.full_name}</h2>
+              <h2 className="text-[20px] font-bold text-white">{name || user?.email?.split("@")[0]}</h2>
               <p className="text-[13px] text-[rgba(255,255,255,0.75)] flex items-center gap-1 mt-0.5">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                   <polyline points="22,6 12,13 2,6" />
                 </svg>
-                {data.email}
+                {displayEmail}
               </p>
               <p className="text-[13px] text-[rgba(255,255,255,0.75)] flex items-center gap-1 mt-0.5">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -149,7 +194,10 @@ export default function Profile() {
               </p>
             </div>
           </div>
-          <button className="px-4 py-2 rounded-[12px] text-[13px] font-semibold text-[#4338ca] bg-white hover:bg-[#f5f3ff] transition-colors">
+          <button
+            onClick={handleEditProfile}
+            className="px-4 py-2 rounded-[12px] text-[13px] font-semibold text-[#4338ca] bg-white hover:bg-[#f5f3ff] transition-colors"
+          >
             Edit Profile
           </button>
         </div>
@@ -162,10 +210,7 @@ export default function Profile() {
             { label: "Total Tests", value: data.total_tests, sub: "Sessions done", iconBg: "#bfdbfe", stroke: "#1d4ed8" },
           ].map(({ label, value, sub, iconBg, stroke }) => (
             <Card key={label}>
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                style={{ background: iconBg }}
-              >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: iconBg }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2">
                   <polyline points="22,7 13.5,15.5 8.5,10.5 2,17" /><polyline points="16,7 22,7 22,13" />
                 </svg>
@@ -203,16 +248,17 @@ export default function Profile() {
           </div>
         </Card>
 
-        {/* Personal info form */}
+        {/* Personal info */}
         <Card>
           <p className="text-[10px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-1">Account Info</p>
           <h3 className="text-[20px] font-bold text-[#1e2939] font-['DM_Serif_Display'] mb-5">Personal information</h3>
           <div className="flex flex-col gap-4">
             <div>
               <label className="text-[11px] font-semibold tracking-widest text-[#6a7282] uppercase block mb-2">
-                Full Name
+                Display Name
               </label>
               <input
+                ref={nameInputRef}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-4 py-3 rounded-[14px] text-[14px] text-[#1e2939] outline-none transition-all"
@@ -226,14 +272,58 @@ export default function Profile() {
                 Email
               </label>
               <input
-                value={data.email}
+                value={displayEmail}
                 readOnly
                 className="w-full px-4 py-3 rounded-[14px] text-[14px] text-[#9ca3af] bg-[#f9fafb]"
                 style={{ border: "1.5px solid rgba(229,231,235,0.5)" }}
               />
+              <p className="text-[11px] text-[#9ca3af] mt-1.5">Email cannot be changed after signup</p>
             </div>
             <Button onClick={handleSave} disabled={saving} className="w-full">
               {saved ? "Saved!" : saving ? "Saving…" : "Save Changes"}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Change Password */}
+        <Card>
+          <p className="text-[10px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-1">Security</p>
+          <h3 className="text-[20px] font-bold text-[#1e2939] font-['DM_Serif_Display'] mb-5">Change password</h3>
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="text-[11px] font-semibold tracking-widest text-[#6a7282] uppercase block mb-2">
+                New Password
+              </label>
+              <input
+                type="password"
+                placeholder="At least 8 characters"
+                value={pwNew}
+                onChange={(e) => setPwNew(e.target.value)}
+                className="w-full px-4 py-3 rounded-[14px] text-[14px] text-[#1e2939] outline-none transition-all"
+                style={{ border: "1.5px solid rgba(229,231,235,0.8)", background: "white" }}
+                onFocus={(e) => (e.target.style.borderColor = "#4338ca")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(229,231,235,0.8)")}
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold tracking-widest text-[#6a7282] uppercase block mb-2">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                placeholder="Re-enter new password"
+                value={pwConfirm}
+                onChange={(e) => setPwConfirm(e.target.value)}
+                className="w-full px-4 py-3 rounded-[14px] text-[14px] text-[#1e2939] outline-none transition-all"
+                style={{ border: "1.5px solid rgba(229,231,235,0.8)", background: "white" }}
+                onFocus={(e) => (e.target.style.borderColor = "#4338ca")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(229,231,235,0.8)")}
+              />
+            </div>
+            {pwError && <p className="text-[12px] text-red-500">{pwError}</p>}
+            {pwSaved && <p className="text-[12px] text-green-600 font-medium">Password updated successfully</p>}
+            <Button onClick={handlePasswordChange} disabled={pwSaving} className="w-full">
+              {pwSaving ? "Updating…" : "Update Password"}
             </Button>
           </div>
         </Card>

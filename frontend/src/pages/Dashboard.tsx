@@ -77,16 +77,34 @@ const QUICK_ACTIONS = [
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [data, setData] = useState<DashboardData>(MOCK)
+  const [data, setData] = useState<DashboardData | null>(null)
   const today = todayIndex()
+
+  const displayName =
+    localStorage.getItem("display_name") ||
+    user?.email?.split("@")[0] ||
+    "there"
 
   useEffect(() => {
     if (!user) return
-    getDashboard(user.id).then(setData).catch(() => {})
+    getDashboard(user.id).then(setData).catch(() => setData(MOCK))
   }, [user])
 
-  return (
+  if (!data) return (
     <div className="min-h-screen bg-[#f5f3ff]">
+      <Navbar />
+      <div className="max-w-[1088px] mx-auto px-8 py-8 flex flex-col gap-6">
+        <div className="h-8 w-48 rounded-xl bg-[#e0daf7] animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[0,1,2,3].map(i => <div key={i} className="h-28 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+        </div>
+        <div className="h-48 rounded-[24px] bg-[#e0daf7] animate-pulse" />
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-[#f5f3ff] dark:bg-[#0f0e1a]">
       <Navbar />
       <div className="max-w-[1088px] mx-auto px-8 py-8 flex flex-col gap-6">
 
@@ -94,7 +112,7 @@ export default function Dashboard() {
         <div>
           <p className="text-[11px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-2">Dashboard</p>
           <h1 className="text-[32px] font-bold text-[#1e2939] font-['DM_Serif_Display'] leading-tight">
-            Welcome back.
+            Welcome back, {displayName}
           </h1>
           <p className="text-[14px] text-[#6a7282] mt-1">Ready to improve your speech today?</p>
         </div>
