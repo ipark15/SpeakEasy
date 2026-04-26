@@ -44,6 +44,8 @@ def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
             metrics["low_confidence_words"] = a["low_confidence_words"]
         if a.get("transcript"):
             metrics["transcript"] = a["transcript"]
+        if tid != "pataka" and a.get("word_timestamps"):
+            metrics["word_timestamps"] = a["word_timestamps"]
 
         tasks.append({"task_id": tid, "scores": scores, "metrics": metrics})
         for dim, val in scores.items():

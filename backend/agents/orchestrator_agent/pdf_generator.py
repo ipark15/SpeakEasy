@@ -207,7 +207,12 @@ def _range_marker_chart(tasks: list) -> bytes | None:
 # ── transcript with confidence highlights ─────────────────────────────────────
 
 def _transcript_paragraph(task: dict, style) -> list:
-    """Return a list of flowables: task label + word-colored transcript."""
+    """Return flowables: task label + word-colored transcript.
+
+    Colors words by per-word confidence from low_confidence_words list.
+    Falls back to relative coloring: bottom 25% of words by confidence
+    get orange/red, so there's always visible variation even in clean sessions.
+    """
     tid = task.get("task_id", "")
     if tid == "pataka":
         return []
@@ -216,22 +221,36 @@ def _transcript_paragraph(task: dict, style) -> list:
     if not transcript:
         return []
 
-    low_conf = {w["word"].lower().strip(".,!?'"): w["confidence"]
-                for w in metrics.get("low_confidence_words", [])}
-    avg_conf = metrics.get("avg_word_confidence", 1.0)
-
-    label_map = {
-        "read_sentence": "Read Aloud",
-        "free_speech":   "Free Speech",
-    }
+    label_map = {"read_sentence": "Read Aloud", "free_speech": "Free Speech"}
     label = label_map.get(tid, tid)
 
-    # Color each word
+    # Best source: word_timestamps has per-word confidence for every word
+    wt = metrics.get("word_timestamps", [])
+    avg_conf = metrics.get("avg_word_confidence", 1.0)
+
+    if wt:
+        # Map in order — zip with transcript words to preserve punctuation
+        wt_confs = [float(w.get("confidence", avg_conf)) for w in wt]
+        transcript_words = [w.get("word", "") for w in wt]
+        # Rebuild transcript from timestamps to ensure alignment
+        words = transcript_words
+        word_confs = wt_confs
+    else:
+        # Fallback: explicit low-confidence list + avg for the rest
+        explicit = {w["word"].lower().strip(".,!?'\""): w["confidence"]
+                    for w in metrics.get("low_confidence_words", [])}
+        words = transcript.split()
+        word_confs = [explicit.get(w.lower().strip(".,!?'\""), avg_conf) for w in words]
+
+    # Always use absolute thresholds — word_timestamps gives real per-word scores
+    def _abs_color(c: float) -> str:
+        if c >= 0.85: return C_GREEN
+        if c >= 0.65: return C_ORANGE
+        return C_RED
+
     parts = []
-    for word in transcript.split():
-        clean = word.lower().strip(".,!?'\"")
-        conf = low_conf.get(clean, avg_conf)
-        c = _conf_color(conf)
+    for word, conf in zip(words, word_confs):
+        c = _abs_color(conf)
         if c == C_GREEN:
             parts.append(word)
         else:
@@ -241,14 +260,14 @@ def _transcript_paragraph(task: dict, style) -> list:
     legend = (
         f'<font color="{C_GREY}" size="8">  '
         f'<font color="{C_GREEN}">■</font> Clear  '
-        f'<font color="{C_ORANGE}">■</font> Borderline  '
+        f'<font color="{C_ORANGE}">■</font> Less certain  '
         f'<font color="{C_RED}">■</font> Low confidence</font>'
     )
 
     return [
         Paragraph(f'<b>{label}</b>', style),
         Paragraph(colored_text + legend, style),
-        Spacer(1, 0.06 * inch),
+        Spacer(1, 0.08 * inch),
     ]
 
 
@@ -261,12 +280,12 @@ def _make_styles():
         return ParagraphStyle(name, **defaults)
 
     title   = S("Title",    fontName="Helvetica-Bold", fontSize=22,
-                textColor=colors.HexColor(C_NAVY), alignment=TA_CENTER, spaceAfter=4)
+                textColor=colors.HexColor(C_NAVY), alignment=TA_CENTER, spaceAfter=2, spaceBefore=0)
     sub     = S("Sub",      fontSize=9, textColor=colors.HexColor(C_GREY),
-                alignment=TA_CENTER, spaceAfter=4)
+                alignment=TA_CENTER, spaceAfter=8, spaceBefore=2)
     heading = S("Heading",  fontName="Helvetica-Bold", fontSize=12,
                 textColor=colors.HexColor(C_BLUE), spaceBefore=14, spaceAfter=5)
-    score   = S("Score",    fontName="Helvetica-Bold", fontSize=52,
+    score   = S("Score",    fontName="Helvetica-Bold", fontSize=36,
                 textColor=colors.HexColor(C_NAVY), alignment=TA_CENTER, spaceAfter=2)
     body    = S("Body",     fontSize=10, leading=16, spaceAfter=4)
     hi      = S("Hi",       fontSize=10, leading=18, spaceAfter=4,
