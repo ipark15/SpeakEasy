@@ -180,7 +180,7 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
                 style={{ animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
-          <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">Connecting to AI…</p>
+          <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">Connecting to Alex…</p>
         </div>
       )}
 
@@ -191,7 +191,7 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
             <div className="flex items-center justify-center gap-2 mb-1">
               <div className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse" />
               <p className="font-['Quicksand'] font-semibold text-[13px] text-[#16a34a]">
-                {isSpeaking ? "AI is speaking…" : "Listening to you…"}
+                {isSpeaking ? "Alex is speaking…" : "Listening to you…"}
               </p>
             </div>
             <p className="font-['Quicksand'] text-[12px] text-[#6b6b8a]">Speak naturally — The coach will respond.</p>
@@ -268,7 +268,7 @@ export default function TherapistSession() {
           </svg>
           Back
         </button>
-        <span className="font-['Quicksand'] font-bold text-[13px] text-[#4338ca]">AI Therapist</span>
+        <span className="font-['Quicksand'] font-bold text-[13px] text-[#4338ca]">Alex</span>
         <div className="w-12" />
       </nav>
 
@@ -289,7 +289,7 @@ export default function TherapistSession() {
         </div>
 
         <div className="text-center">
-          <h1 className="font-['Quicksand'] font-extrabold text-[28px] text-[#1e1b4b] mb-1">AI</h1>
+          <h1 className="font-['Quicksand'] font-extrabold text-[28px] text-[#1e1b4b] mb-1">Alex</h1>
           <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">Speech Therapist · AI-Powered</p>
         </div>
 
@@ -312,7 +312,7 @@ export default function TherapistSession() {
             <div className="rounded-[18px] p-5 w-full text-center"
               style={{ background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.12)" }}>
               <p className="font-['Quicksand'] font-bold text-[15px] text-[#1e1b4b] mb-1">Session complete</p>
-              <p className="font-['Quicksand'] text-[13px] text-[#6b6b8a]">Great work! Keep practising the exercises AI recommended.</p>
+              <p className="font-['Quicksand'] text-[13px] text-[#6b6b8a]">Great work! Keep practising the exercises Alex recommended.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 w-full">
               <button onClick={() => setPhase("ready")}
