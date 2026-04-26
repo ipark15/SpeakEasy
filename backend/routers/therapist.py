@@ -87,6 +87,23 @@ def start_therapist_session(req: TherapistSessionRequest):
     system_prompt = build_system_prompt(assessment_summary, history)
     first_message = build_first_message(assessment_summary)
 
+    headers = {"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"}
+
+    # Push personalized prompt directly onto the agent (server-side, no client override needed)
+    try:
+        patch_resp = httpx.patch(
+            f"{ELEVENLABS_BASE}/v1/convai/agents/{ELEVENLABS_AGENT_ID}",
+            headers=headers,
+            json={"conversation_config": {"agent": {"prompt": {"prompt": system_prompt}}}},
+            timeout=30.0,
+        )
+        patch_resp.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs agent update error {e.response.status_code}: {e.response.text}")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs agent update failed: {e}")
+
+    # Now get the signed URL — session will use the prompt we just set
     try:
         resp = httpx.get(
             f"{ELEVENLABS_BASE}/v1/convai/conversation/get_signed_url",

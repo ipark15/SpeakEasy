@@ -8,11 +8,10 @@ type Phase = "loading" | "ready" | "connecting" | "connected" | "ended" | "error
 
 const WAVE_HEIGHTS = [10, 18, 26, 22, 14, 30, 18, 26, 14, 22, 18, 10]
 
-function TherapistChat({ phase, setPhase, signedUrl, systemPrompt }: {
+function TherapistChat({ phase, setPhase, signedUrl }: {
   phase: Phase
   setPhase: (p: Phase) => void
   signedUrl: string
-  systemPrompt: string
 }) {
   const conversation = useConversation({
     onConnect: () => {
@@ -48,11 +47,7 @@ function TherapistChat({ phase, setPhase, signedUrl, systemPrompt }: {
     setPhase("connecting")
     console.log("[ElevenLabs] calling startSession, signedUrl:", signedUrl?.slice(0, 60))
     try {
-      const sessionConfig: Parameters<typeof conversation.startSession>[0] = { signedUrl }
-      if (systemPrompt) {
-        sessionConfig.overrides = { agent: { prompt: { prompt: systemPrompt } } }
-      }
-      conversation.startSession(sessionConfig)
+      conversation.startSession({ signedUrl })
     } catch (err) {
       console.error("[ElevenLabs] startSession threw:", err)
       setPhase("error")
@@ -259,7 +254,6 @@ export default function TherapistSession() {
               phase={phase}
               setPhase={setPhase}
               signedUrl={sessionData.signed_url}
-              systemPrompt={sessionData.system_prompt}
             />
           </ConversationProvider>
         )}
