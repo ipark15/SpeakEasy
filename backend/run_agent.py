@@ -135,7 +135,7 @@ async def receive_report(ctx: Context, sender_addr: str, msg: ReportResponse):
     ctx.logger.info("=" * 55)
 
 
-bureau = Bureau()
+bureau = Bureau(port=8010)
 bureau.add(orchestrator)
 bureau.add(sender)
 

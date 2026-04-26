@@ -4,7 +4,6 @@ from datetime import datetime
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from openai import OpenAI
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
@@ -19,11 +18,16 @@ from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
 
 load_dotenv()
 
-# ASI1 client — used as the chat interface
-asi1_client = OpenAI(
-    base_url="https://api.asi1.ai/v1",
-    api_key=os.getenv("ASI1_API_KEY"),
-)
+# ── Coach agent addresses (fill in after deploying each to Agentverse) ──────
+COACH_ADDRESSES = {
+    "fluency":       os.getenv("FLUENCY_AGENT_ADDRESS", ""),
+    "clarity":       os.getenv("CLARITY_AGENT_ADDRESS", ""),
+    "rhythm":        os.getenv("RHYTHM_AGENT_ADDRESS", ""),
+    "prosody":       os.getenv("PROSODY_AGENT_ADDRESS", ""),
+    "pronunciation": os.getenv("PRONUNCIATION_AGENT_ADDRESS", ""),
+}
+
+GOOD_SCORE_THRESHOLD = 90.0  # all dimensions above this → skip coaching
 
 agent = Agent(
     name="speakeasy_orchestrator",
@@ -35,96 +39,137 @@ agent = Agent(
 
 protocol = Protocol(spec=chat_protocol_spec)
 
-SYSTEM_PROMPT = """You are SpeechScore, an AI speech assessment orchestrator powered by Gemma 4.
-Your job is to receive speech assessment data (scores and acoustic features) and return a
-patient-friendly analysis of the results.
 
-When given assessment JSON, you will:
-1. Explain what each score means in plain, encouraging language
-2. Identify the speaker's strongest and weakest areas
-3. Highlight specific moments where the speaker struggled
-4. Provide 3 actionable practice recommendations
-5. Generate a PDF report summarizing all findings
+def _scores_from_payload(assessment: dict) -> dict[str, float]:
+    """Extract per-dimension scores from either old or new assessment format."""
+    # New 3-task format
+    if "scores_summary" in assessment:
+        return assessment["scores_summary"]
+    # Old flat format
+    s = assessment.get("scores", {})
+    return {k: v for k, v in s.items() if k != "overall" and v is not None}
 
-You work with these speech metrics: fluency, clarity, rhythm, prosody, voice quality,
-word error rate, DDK rate, rhythm regularity, speaking rate (WPM), pitch variation,
-jitter, shimmer, and harmonics-to-noise ratio (HNR).
 
-If asked about therapy sessions or coach agents, let the user know that personalized
-therapy coaching (Rhythm Coach, Clarity Coach, Fluency Coach, Prosody Coach) is coming
-soon as a Phase 2 feature."""
+def _coaches_needed(scores: dict[str, float]) -> list[tuple[str, float]]:
+    """Return (dimension, score) pairs below threshold, sorted worst first."""
+    low = [(dim, score) for dim, score in scores.items() if score < GOOD_SCORE_THRESHOLD]
+    return sorted(low, key=lambda x: x[1])
+
+
+def _build_coach_context(dimension: str, score: float, assessment: dict) -> str:
+    """Build the opening message sent to a coach agent."""
+    scores_summary = _scores_from_payload(assessment)
+    composite = assessment.get("composite_score", assessment.get("scores", {}).get("overall", "N/A"))
+
+    # Pull relevant metrics for this dimension from tasks
+    metrics_lines = []
+    for task in assessment.get("tasks", []):
+        m = task.get("metrics", {})
+        if dimension == "fluency" and m.get("wpm"):
+            metrics_lines.append(f"WPM: {m['wpm']} (task: {task['task_id']})")
+        if dimension == "fluency" and m.get("filler_count"):
+            metrics_lines.append(f"Filler words: {m['filler_count']}")
+        if dimension == "clarity" and m.get("word_error_rate") is not None:
+            metrics_lines.append(f"Word error rate: {m['word_error_rate']:.1%}")
+        if dimension == "rhythm" and m.get("ddk_rate"):
+            metrics_lines.append(f"DDK rate: {m['ddk_rate']} syl/sec (normal: 5–7)")
+            metrics_lines.append(f"Rhythm regularity: {m.get('rhythm_regularity', 'N/A')}")
+        if dimension == "prosody" and m.get("pitch_std_hz"):
+            metrics_lines.append(f"Pitch variation: {m['pitch_std_hz']} Hz std (expressive: 20–55 Hz)")
+        if dimension == "pronunciation" and m.get("avg_word_confidence"):
+            metrics_lines.append(f"Word confidence: {m['avg_word_confidence']:.1%}")
+        if dimension == "pronunciation" and m.get("low_confidence_words"):
+            words = [w["word"] for w in m["low_confidence_words"][:5]]
+            metrics_lines.append(f"Low-confidence words: {words}")
+
+    metrics_block = "\n".join(metrics_lines) if metrics_lines else "No detailed metrics available."
+
+    return f"""New user needs coaching. Here are their assessment results:
+
+Composite score: {composite}/100
+All dimension scores: {json.dumps(scores_summary, indent=2)}
+
+This user scored {score}/100 on {dimension.upper()} — this is why you were activated.
+
+Relevant metrics for {dimension}:
+{metrics_block}
+
+Please introduce yourself as their {dimension.capitalize()} Coach and give them one specific
+drill phrase or exercise to try right now. Keep it warm, encouraging, and under 100 words.
+End with the exact phrase or sentence you want them to say aloud."""
 
 
 @protocol.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
-    await ctx.send(
-        sender,
-        ChatAcknowledgement(
-            timestamp=datetime.now(),
-            acknowledged_msg_id=msg.msg_id,
-        ),
-    )
+    await ctx.send(sender, ChatAcknowledgement(
+        timestamp=datetime.now(), acknowledged_msg_id=msg.msg_id,
+    ))
 
-    text = ""
-    for item in msg.content:
-        if isinstance(item, TextContent):
-            text += item.text
+    text = "".join(item.text for item in msg.content if isinstance(item, TextContent))
+    ctx.logger.info(f"Orchestrator received: {text[:100]}...")
 
-    ctx.logger.info(f"Received message: {text[:100]}...")
-
-    response_text = "Something went wrong while processing your speech assessment."
+    response_text = "Assessment received."
     try:
-        # Try to parse as assessment JSON first
-        assessment = None
-        try:
-            assessment = json.loads(text)
-        except json.JSONDecodeError:
-            pass
+        assessment = json.loads(text)
 
-        if assessment and "scores" in assessment:
-            # Full pipeline: Gemma narrative + PDF
-            ctx.logger.info("Running full Gemma pipeline...")
-            narrative = generate_narrative(assessment)
+        # ── Generate Gemma narrative + PDF ───────────────────
+        ctx.logger.info("Generating Gemma narrative...")
+        narrative = generate_narrative(assessment)
+        os.makedirs("backend/reports", exist_ok=True)
+        session_id = assessment.get("session_id", "session")
+        generate_pdf(assessment, narrative, f"backend/reports/{session_id}.pdf")
+        ctx.logger.info(f"PDF saved: backend/reports/{session_id}.pdf")
 
-            os.makedirs("backend/reports", exist_ok=True)
-            session_id = assessment.get("session_id", "session")
-            generate_pdf(assessment, narrative, f"backend/reports/{session_id}.pdf")
+        # ── Check if coaching is needed ───────────────────────
+        scores = _scores_from_payload(assessment)
+        coaches_needed = _coaches_needed(scores)
 
+        if not coaches_needed:
+            ctx.logger.info("All scores above 90 — no coaching needed.")
             response_text = (
-                f"**SpeechScore Assessment Complete**\n\n"
-                f"Overall Score: {assessment['scores']['overall']} / 100\n\n"
-                f"{narrative.get('overall_summary', '')}\n\n"
-                f"**Strengths:**\n{narrative.get('strengths', '')}\n\n"
-                f"**Areas to Improve:**\n{narrative.get('weaknesses', '')}\n\n"
-                f"**Recommended Focus:**\n{narrative.get('next_focus', '')}\n\n"
-                f"PDF report saved to backend/reports/{session_id}.pdf"
+                f"Excellent work! All your scores are above 90/100. "
+                f"{narrative.get('overall_summary', '')} "
+                f"Your PDF report has been saved."
             )
         else:
-            # Plain chat — use ASI1 directly
-            r = asi1_client.chat.completions.create(
-                model="asi1",
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": text},
-                ],
-                max_tokens=1024,
+            dims = [d for d, _ in coaches_needed]
+            ctx.logger.info(f"Activating coaches for: {dims}")
+
+            # Message each needed coach agent
+            for dimension, score in coaches_needed:
+                address = COACH_ADDRESSES.get(dimension, "")
+                if not address:
+                    ctx.logger.warning(f"No address for {dimension} coach — skipping")
+                    continue
+                coach_msg = _build_coach_context(dimension, score, assessment)
+                await ctx.send(address, ChatMessage(
+                    timestamp=datetime.utcnow(),
+                    msg_id=uuid4(),
+                    content=[TextContent(type="text", text=coach_msg)],
+                ))
+                ctx.logger.info(f"Sent to {dimension} coach at {address[:30]}...")
+
+            response_text = (
+                f"{narrative.get('overall_summary', '')}\n\n"
+                f"Activating coaches for: {', '.join(dims)}. "
+                f"Your PDF report has been saved."
             )
-            response_text = str(r.choices[0].message.content)
 
+    except json.JSONDecodeError:
+        ctx.logger.error("Could not parse assessment JSON")
+        response_text = "Error: could not parse assessment data."
     except Exception:
-        ctx.logger.exception("Error in orchestrator pipeline")
+        ctx.logger.exception("Orchestrator pipeline error")
+        response_text = "Something went wrong processing your assessment."
 
-    await ctx.send(
-        sender,
-        ChatMessage(
-            timestamp=datetime.utcnow(),
-            msg_id=uuid4(),
-            content=[
-                TextContent(type="text", text=response_text),
-                EndSessionContent(type="end-session"),
-            ],
-        ),
-    )
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.utcnow(),
+        msg_id=uuid4(),
+        content=[
+            TextContent(type="text", text=response_text),
+            EndSessionContent(type="end-session"),
+        ],
+    ))
 
 
 @protocol.on_message(ChatAcknowledgement)
@@ -135,6 +180,5 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 agent.include(protocol, publish_manifest=True)
 
 if __name__ == "__main__":
-    ctx_logger = agent._logger
-    ctx_logger.info(f"Agent address: {agent.address}")
+    agent._logger.info(f"Agent address: {agent.address}")
     agent.run()
