@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ConversationProvider, useConversation } from "@elevenlabs/react"
 import { useAuth } from "../hooks/useAuth"
 import { startTherapistSession, type TherapistSession } from "../lib/api"
 
 type Phase = "loading" | "ready" | "connecting" | "connected" | "ended" | "error"
+type ChatEntry = { role: "user" | "agent"; text: string }
 
 const WAVE_HEIGHTS = [10, 18, 26, 22, 14, 30, 18, 26, 14, 22, 18, 10]
 
@@ -13,21 +14,29 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
   setPhase: (p: Phase) => void
   signedUrl: string
 }) {
+  const [chatLog, setChatLog] = useState<ChatEntry[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [chatLog])
+
   const conversation = useConversation({
     onConnect: () => {
-      console.log("[ElevenLabs] onConnect fired")
+      setChatLog([])
       setPhase("connected")
     },
     onDisconnect: (details) => {
-      console.log("[ElevenLabs] onDisconnect fired:", JSON.stringify(details))
+      console.log("[ElevenLabs] onDisconnect:", JSON.stringify(details))
       setPhase("ended")
     },
     onError: (error) => {
-      console.error("[ElevenLabs] onError fired:", error)
+      console.error("[ElevenLabs] onError:", error)
       setPhase("error")
     },
-    onStatusChange: (status) => console.log("[ElevenLabs] status:", status),
-    onMessage: (msg) => console.log("[ElevenLabs] message:", msg),
+    onMessage: ({ message, role }) => {
+      setChatLog(prev => [...prev, { role, text: message }])
+    },
   })
 
   const isSpeaking = conversation.isSpeaking
@@ -120,6 +129,24 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
               />
             ))}
           </div>
+
+          {chatLog.length > 0 && (
+            <div className="w-full rounded-[16px] overflow-y-auto flex flex-col gap-2 p-3"
+              style={{ maxHeight: "220px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(229,231,235,0.8)" }}>
+              {chatLog.map((entry, i) => (
+                <div key={i} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className="max-w-[80%] px-3 py-2 rounded-[12px] text-[12px] leading-relaxed"
+                    style={entry.role === "user"
+                      ? { background: "#4338ca", color: "white" }
+                      : { background: "white", color: "#1e1b4b", border: "1px solid rgba(229,231,235,0.8)" }
+                    }>
+                    {entry.text}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+          )}
 
           <button
             onClick={handleEnd}

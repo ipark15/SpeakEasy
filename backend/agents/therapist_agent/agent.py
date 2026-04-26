@@ -13,7 +13,7 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
-from .gemma_client import build_system_prompt
+from .prompt_builder import build_system_prompt
 
 load_dotenv()
 
