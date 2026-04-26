@@ -246,6 +246,18 @@ export default function Dashboard() {
                 Practice with AI
               </Button>
             </Card>
+            <Card>
+              <p className="text-[10px] font-semibold tracking-widest text-[#6a7282] uppercase mb-1">Therapist</p>
+              <h3 className="text-[20px] font-bold text-[#1e2939] mb-1">Talk to Alex</h3>
+              <p className="text-[13px] text-[#6a7282] mb-4">Voice session with your AI speech therapist</p>
+              <Button onClick={() => navigate("/therapist")} className="w-full flex items-center justify-center gap-2">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                Start Session
+              </Button>
+            </Card>
           </div>
         </div>
 

@@ -40,7 +40,7 @@ export function useRecorder() {
   const [recorderError, setRecorderError] = useState("")
 
   const audioCtxRef = useRef<AudioContext | null>(null)
-  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const workletRef = useRef<AudioWorkletNode | null>(null)
   const samplesRef = useRef<Float32Array[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -67,22 +67,20 @@ export function useRecorder() {
     streamRef.current = stream
     samplesRef.current = []
 
-    // Use Web Audio API to capture raw PCM at native rate, then resample to 16kHz
     const ctx = new AudioContext()
     audioCtxRef.current = ctx
+
+    await ctx.audioWorklet.addModule("/recorder-processor.js")
     const source = ctx.createMediaStreamSource(stream)
+    const worklet = new AudioWorkletNode(ctx, "recorder-processor")
+    workletRef.current = worklet
 
-    // ScriptProcessorNode buffers raw float32 PCM from the mic
-    const processor = ctx.createScriptProcessor(4096, 1, 1)
-    processorRef.current = processor
-
-    processor.onaudioprocess = (e) => {
-      const chunk = e.inputBuffer.getChannelData(0)
-      samplesRef.current.push(new Float32Array(chunk))
+    worklet.port.onmessage = (e: MessageEvent<Float32Array>) => {
+      samplesRef.current.push(new Float32Array(e.data))
     }
 
-    source.connect(processor)
-    processor.connect(ctx.destination)
+    source.connect(worklet)
+    worklet.connect(ctx.destination)
 
     setIsRecording(true)
     setSeconds(0)
@@ -94,12 +92,13 @@ export function useRecorder() {
     setIsRecording(false)
 
     const ctx = audioCtxRef.current
-    const processor = processorRef.current
+    const worklet = workletRef.current
     const stream = streamRef.current
 
-    if (!ctx || !processor) return
+    if (!ctx || !worklet) return
 
-    processor.disconnect()
+    worklet.disconnect()
+    worklet.port.close()
     stream?.getTracks().forEach((t) => t.stop())
 
     // Concatenate all PCM chunks
@@ -127,7 +126,7 @@ export function useRecorder() {
 
     ctx.close()
     audioCtxRef.current = null
-    processorRef.current = null
+    workletRef.current = null
   }
 
   function reset() {

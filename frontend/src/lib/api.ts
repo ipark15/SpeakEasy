@@ -184,3 +184,17 @@ export function coachWebSocket(sessionId: string): WebSocket {
   const wsBase = BASE.replace(/^http/, "ws")
   return new WebSocket(`${wsBase}/ws/coach/${sessionId}`)
 }
+
+// ── Therapist ────────────────────────────────────────────────────────────────
+
+export type TherapistSession = {
+  signed_url: string
+  system_prompt: string
+}
+
+export async function startTherapistSession(
+  sessionId: string,
+  userId: string,
+): Promise<TherapistSession> {
+  return post("/api/therapist/session", { session_id: sessionId, user_id: userId })
+}
