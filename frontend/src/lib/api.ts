@@ -191,6 +191,7 @@ export function coachWebSocket(sessionId: string): WebSocket {
 export type TherapistSession = {
   signed_url: string
   system_prompt: string
+  first_message: string
 }
 
 export async function startTherapistSession(

@@ -321,14 +321,14 @@ export default function Results() {
         {tab === "AI Insights" && (
               <div className="flex flex-col gap-5">
                 <div className="text-center py-6">
-                  <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">AI coaching is ready</p>
+                  <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">Your AI coach is ready</p>
                   <p className="font-['Quicksand'] font-normal text-[14px] text-[#6b6b8a] mb-6 max-w-sm mx-auto">
-                    Pick a specialized AI coach to work on your specific areas of improvement.
+                    Get personalised tips and guidance based on your results in a live 1-on-1 session.
                   </p>
-                  <button onClick={() => navigate("/coach")}
+                  <button onClick={() => navigate(`/coach?sessionId=${sessionId}`)}
                     className="bg-[#4338ca] text-white font-['Quicksand'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
                     style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
-                    Choose a Coach
+                    Enter your 1-1 speech analysis session
                   </button>
                 </div>
                 <div className="rounded-[20px] p-6 flex items-center justify-between gap-6"
@@ -504,22 +504,34 @@ export default function Results() {
         </div>
 
         {/* Bottom CTAs */}
-        <div className="grid grid-cols-2 gap-3 pb-8">
-          <button onClick={() => navigate("/assess")}
-            className="flex items-center justify-center gap-2 h-[52px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+        <div className="flex flex-col gap-3 pb-8">
+          <button onClick={() => navigate(`/coach?sessionId=${sessionId}`)}
+            className="flex items-center justify-center gap-2.5 h-[58px] rounded-[18px] text-[15px] font-semibold text-white bg-[#4338ca] hover:bg-[#3730a3] transition-colors font-['Quicksand']"
+            style={{ boxShadow: "0px 6px 14px rgba(67,56,202,0.28)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
             </svg>
-            Try Again
+            Enter your 1-1 speech analysis session
           </button>
-          <button onClick={() => navigate("/dashboard")}
-            className="flex items-center justify-center gap-2 h-[52px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            Go to Dashboard
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => navigate("/assess")}
+              className="flex items-center justify-center gap-2 h-[48px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors font-['Quicksand']">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+              </svg>
+              Try Again
+            </button>
+            <button onClick={() => navigate("/dashboard")}
+              className="flex items-center justify-center gap-2 h-[48px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors font-['Quicksand']">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              Go to Dashboard
+            </button>
+          </div>
         </div>
 
       </div>

@@ -16,7 +16,7 @@ load_dotenv()
 ORCHESTRATOR_ADDRESS = os.getenv("ORCHESTRATOR_AGENT_ADDRESS", "")
 
 agent = Agent(
-    name="speakeasy_assessment",
+    name="assessment_agent",
     seed=os.getenv("ASSESSMENT_AGENT_SEED", "speakeasy_assessment_agent_seed"),
     port=8031,
     mailbox=True,

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -5,7 +7,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from backend.db import queries as db
-from backend.agents.therapist_agent.gemma_client import build_system_prompt
+from backend.agents.therapist_agent.prompt_builder import build_system_prompt, build_first_message
 
 load_dotenv()
 
@@ -16,6 +18,8 @@ ELEVENLABS_AGENT_ID = os.getenv("ELEVENLABS_AGENT_ID", "")
 ELEVENLABS_BASE = "https://api.elevenlabs.io"
 
 
+# ── /therapist/session — frontend calls this to start a live ElevenLabs session ──
+
 class TherapistSessionRequest(BaseModel):
     session_id: str
     user_id: str
@@ -24,6 +28,7 @@ class TherapistSessionRequest(BaseModel):
 class TherapistSessionResponse(BaseModel):
     signed_url: str
     system_prompt: str
+    first_message: str
 
 
 def _build_assessment_summary(session: dict) -> dict:
@@ -44,7 +49,7 @@ def _build_assessment_summary(session: dict) -> dict:
             for k in (
                 "wpm", "filler_count", "pause_count", "max_pause_duration",
                 "word_error_rate", "ddk_rate", "rhythm_regularity",
-                "pitch_std_hz", "avg_word_confidence",
+                "pitch_std_hz", "avg_word_confidence", "transcript",
             )
             if a.get(k) is not None
         }
@@ -55,9 +60,11 @@ def _build_assessment_summary(session: dict) -> dict:
     scores_summary = {
         k: round(sum(vals) / len(vals), 1)
         for k, vals in scores_sum.items()
+        if k not in ("voice_quality", "overall")
     }
 
     return {
+        "session_id": session.get("id", ""),
         "composite_score": session.get("overall_score"),
         "scores_summary": scores_summary,
         "tasks": tasks,
@@ -78,6 +85,7 @@ def start_therapist_session(req: TherapistSessionRequest):
     history = db.get_history_data(req.user_id)
     assessment_summary = _build_assessment_summary(session)
     system_prompt = build_system_prompt(assessment_summary, history)
+    first_message = build_first_message(assessment_summary)
 
     try:
         resp = httpx.get(
@@ -97,4 +105,35 @@ def start_therapist_session(req: TherapistSessionRequest):
     if not signed_url:
         raise HTTPException(status_code=502, detail=f"ElevenLabs response missing signed_url: {data}")
 
-    return TherapistSessionResponse(signed_url=signed_url, system_prompt=system_prompt)
+    return TherapistSessionResponse(
+        signed_url=signed_url,
+        system_prompt=system_prompt,
+        first_message=first_message,
+    )
+
+
+# ── /therapist/prompt — agent chain calls this after progress_tracker has run ──
+
+class TherapistPromptRequest(BaseModel):
+    current_assessment: dict
+    history: dict
+
+
+class TherapistPromptResponse(BaseModel):
+    system_prompt: str
+    first_message: str
+
+
+@router.post("/therapist/prompt", response_model=TherapistPromptResponse)
+def get_therapist_prompt(body: TherapistPromptRequest):
+    """
+    Returns system prompt + opening line for Maya without touching ElevenLabs.
+    Call this after assessment completes and progress_tracker has run.
+    """
+    if not body.current_assessment:
+        raise HTTPException(status_code=400, detail="current_assessment is required")
+
+    return TherapistPromptResponse(
+        system_prompt=build_system_prompt(body.current_assessment, body.history),
+        first_message=build_first_message(body.current_assessment),
+    )

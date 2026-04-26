@@ -43,15 +43,14 @@ export default function Auth() {
           onClick={() => navigate("/")}
           className="flex items-end gap-0.5 cursor-pointer hover:opacity-80 transition-opacity"
         >
-          <span className="font-['Outfit'] font-extrabold text-[24px] leading-[24px] text-[#4338ca] tracking-[-0.5px]">Speakeas</span>
-          <svg width="20" height="32" viewBox="0 0 22 36" fill="none">
-            <path d="M11 3a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z" fill="#4338ca" />
-            <path d="M18 13v1a7 7 0 0 1-14 0v-1" stroke="#4338ca" strokeWidth="2" strokeLinecap="round" />
-            <line x1="11" y1="21" x2="11" y2="27" stroke="#4338ca" strokeWidth="2" strokeLinecap="round" />
-            <line x1="7" y1="27" x2="15" y2="27" stroke="#4338ca" strokeWidth="2" strokeLinecap="round" />
+          <span className="font-['Quicksand'] font-extrabold text-[27px] leading-[27px] text-[#4338ca] tracking-[-0.54px]">speakeas</span>
+          <svg className="-ml-1" width="15" height="33" viewBox="0 0 22 27" fill="none">
+            <path d="M11 3a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z" fill="#A8A9AD"/>
+            <path d="M18 13v1a7 7 0 0 1-14 0v-1" stroke="#4338ca" strokeWidth="4" strokeLinecap="round"/>
+            <line x1="11" y1="21" x2="11" y2="32" stroke="#4338ca" strokeWidth="4" strokeLinecap="round"/>
           </svg>
         </button>
-        <p className="font-['Outfit'] text-[13px] text-[#9896b0]">
+        <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">
           {isSignUp ? "Already have an account?" : "New here?"}{" "}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError("") }}
@@ -76,14 +75,14 @@ export default function Auth() {
                 <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" />
                 <path d="M19 10v1a7 7 0 0 1-14 0v-1" stroke="#6366f1" strokeWidth="2" fill="none" />
               </svg>
-              <span className="font-['Outfit'] font-bold text-[11px] text-[#6366f1] tracking-[1.1px] uppercase">
+              <span className="font-['Quicksand'] font-bold text-[11px] text-[#6366f1] tracking-[1.1px] uppercase">
                 AI-Powered Analysis
               </span>
             </div>
-            <h1 className="font-['DM_Serif_Display'] text-[40px] leading-[44px] text-[#1e1b4b] mb-3">
+            <h1 className="font-['Quicksand'] font-extrabold text-[38px] leading-[42px] text-[#1e1b4b] mb-3">
               {isSignUp ? "Create your account." : "Welcome back."}
             </h1>
-            <p className="font-['Outfit'] font-normal text-[15px] text-[#6b6b8a]">
+            <p className="font-['Quicksand'] font-normal text-[15px] text-[#6b6b8a]">
               {isSignUp
                 ? "Start improving your speech today."
                 : "Sign in to continue your progress."}
@@ -101,7 +100,7 @@ export default function Auth() {
           >
             <form onSubmit={handleAuth} className="flex flex-col gap-5">
               <div>
-                <label className="block font-['Outfit'] font-semibold text-[12px] text-[#9896b0] tracking-[0.8px] uppercase mb-2">
+                <label className="block font-['Quicksand'] font-semibold text-[12px] text-[#9896b0] tracking-[0.8px] uppercase mb-2">
                   Email
                 </label>
                 <input
@@ -110,7 +109,7 @@ export default function Auth() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  className="w-full bg-[#f8f7ff] rounded-[14px] px-4 py-3 font-['Outfit'] text-[14px] text-[#1e1b4b] outline-none transition-all"
+                  className="w-full bg-[#f8f7ff] rounded-[14px] px-4 py-3 font-['Quicksand'] text-[14px] text-[#1e1b4b] outline-none transition-all"
                   style={{ border: "1.5px solid rgba(229,231,235,0.8)" }}
                   onFocus={(e) => (e.target.style.borderColor = "#4338ca")}
                   onBlur={(e) => (e.target.style.borderColor = "rgba(229,231,235,0.8)")}
@@ -118,7 +117,7 @@ export default function Auth() {
               </div>
 
               <div>
-                <label className="block font-['Outfit'] font-semibold text-[12px] text-[#9896b0] tracking-[0.8px] uppercase mb-2">
+                <label className="block font-['Quicksand'] font-semibold text-[12px] text-[#9896b0] tracking-[0.8px] uppercase mb-2">
                   Password
                 </label>
                 <input
@@ -127,7 +126,7 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full bg-[#f8f7ff] rounded-[14px] px-4 py-3 font-['Outfit'] text-[14px] text-[#1e1b4b] outline-none transition-all"
+                  className="w-full bg-[#f8f7ff] rounded-[14px] px-4 py-3 font-['Quicksand'] text-[14px] text-[#1e1b4b] outline-none transition-all"
                   style={{ border: "1.5px solid rgba(229,231,235,0.8)" }}
                   onFocus={(e) => (e.target.style.borderColor = "#4338ca")}
                   onBlur={(e) => (e.target.style.borderColor = "rgba(229,231,235,0.8)")}
@@ -139,14 +138,14 @@ export default function Auth() {
                   className="rounded-[14px] px-4 py-3"
                   style={{ background: "rgba(254,242,242,0.8)" }}
                 >
-                  <p className="font-['Outfit'] text-[13px] text-red-500">{error}</p>
+                  <p className="font-['Quicksand'] text-[13px] text-red-500">{error}</p>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-[54px] bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50 mt-1"
+                className="w-full h-[54px] bg-[#4338ca] text-white font-['Quicksand'] font-bold text-[15px] rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50 mt-1"
                 style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}
               >
                 {loading ? "Please wait…" : isSignUp ? "Create account" : "Sign in"}
@@ -155,11 +154,11 @@ export default function Auth() {
 
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 h-px" style={{ background: "rgba(99,102,241,0.1)" }} />
-              <span className="font-['Outfit'] text-[12px] text-[#9896b0]">or</span>
+              <span className="font-['Quicksand'] text-[12px] text-[#9896b0]">or</span>
               <div className="flex-1 h-px" style={{ background: "rgba(99,102,241,0.1)" }} />
             </div>
 
-            <p className="font-['Outfit'] text-[13px] text-[#9896b0] text-center">
+            <p className="font-['Quicksand'] text-[13px] text-[#9896b0] text-center">
               {isSignUp ? "Already have an account?" : "No account yet?"}{" "}
               <button
                 type="button"
@@ -172,7 +171,7 @@ export default function Auth() {
           </div>
 
           {/* Footer note */}
-          <p className="font-['Outfit'] text-[12px] text-[#9896b0] text-center mt-6">
+          <p className="font-['Quicksand'] text-[12px] text-[#9896b0] text-center mt-6">
             Your audio never leaves your device. Scores are private.
           </p>
         </div>

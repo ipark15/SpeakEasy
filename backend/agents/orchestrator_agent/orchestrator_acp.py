@@ -30,7 +30,7 @@ COACH_ADDRESSES = {
 GOOD_SCORE_THRESHOLD = 90.0  # all dimensions above this → skip coaching
 
 agent = Agent(
-    name="speakeasy_orchestrator",
+    name="report_generator",
     seed=os.getenv("AGENT_SEED", "speechscore_orchestrator_unique_seed_phrase"),
     port=8001,
     mailbox=True,
@@ -97,7 +97,6 @@ Relevant metrics for {dimension}:
 Please introduce yourself as their {dimension.capitalize()} Coach and give them one specific
 drill phrase or exercise to try right now. Keep it warm, encouraging, and under 100 words.
 End with the exact phrase or sentence you want them to say aloud."""
-
 
 @protocol.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
