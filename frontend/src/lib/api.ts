@@ -70,15 +70,15 @@ export type SessionData = {
   id: string
   user_id: string
   overall_score: number
-  assessments: Array<{
+  assessments: Array<Assessment & {
     task: string
     score_fluency: number | null
     score_clarity: number | null
     score_rhythm: number | null
     score_prosody: number | null
     score_pronunciation: number | null
+    score_voice_quality: number | null
     score_overall: number | null
-    [key: string]: unknown
   }>
 }
 
@@ -190,7 +190,6 @@ export function coachWebSocket(sessionId: string): WebSocket {
 
 export type TherapistSession = {
   signed_url: string
-  system_prompt: string
   first_message: string
 }
 

@@ -156,7 +156,7 @@ export default function Results() {
   const navigate = useNavigate()
   const [session, setSession] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>("Feedback")
+  const [tab, _setTab] = useState<Tab>("Feedback")
   const [generatingReport, setGeneratingReport] = useState(false)
   const [reportError, setReportError] = useState("")
 
@@ -389,7 +389,7 @@ export default function Results() {
           </div>
 
           <div className="flex flex-col gap-5">
-            {TASK_ORDER.map(({ key, task }, idx) => {
+            {TASK_ORDER.map(({ key, task }) => {
               if (!task) return null
               const fillerSet = new Set((task.filler_words ?? []).map(f => f.word.toLowerCase()))
               const lowSet = new Set((task.low_confidence_words ?? []).map(w => w.word.toLowerCase()))
@@ -494,7 +494,7 @@ export default function Results() {
               <p className="text-[12px] text-[#6b6b8a]">Voice session personalized to your results</p>
             </div>
             <button
-              onClick={() => navigate(`/therapist/${sessionId}`)}
+              onClick={() => navigate(`/coach?sessionId=${sessionId}`)}
               className="shrink-0 h-[40px] px-5 rounded-[12px] text-white font-['Outfit'] font-semibold text-[13px] cursor-pointer hover:opacity-90 transition-opacity"
               style={{ background: "#4338ca", boxShadow: "0px 4px 10px rgba(67,56,202,0.28)" }}
             >
