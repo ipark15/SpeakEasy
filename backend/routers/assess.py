@@ -203,7 +203,8 @@ async def assess(
         # Persist to DB if session context provided
         assessment_id = None
         if user_id and session_id:
-            assessment_id = db.save_assessment(session_id, user_id, response)
+            audio_url = db.upload_audio(session_id, task, audio_bytes)
+            assessment_id = db.save_assessment(session_id, user_id, response, audio_url=audio_url)
             response.assessment_id = assessment_id
 
             # Mark session complete when all 3 tasks have been saved

@@ -85,7 +85,10 @@ create table if not exists assessments (
 
     -- LLM feedback
     feedback                text,
-    tips                    jsonb           -- List[str]
+    tips                    jsonb,          -- List[str]
+
+    -- Audio file (Supabase Storage URL)
+    audio_url               text
 );
 
 alter table assessments enable row level security;
