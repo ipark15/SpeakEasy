@@ -18,7 +18,6 @@ from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
 
 load_dotenv()
 
-PROGRESS_TRACKER_ADDRESS = os.getenv("PROGRESS_TRACKER_ADDRESS", "")
 
 agent = Agent(
     name="report_generator",
@@ -83,17 +82,6 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         }
         generate_pdf(pdf_input, narrative, f"backend/reports/{session_id}.pdf")
         ctx.logger.info(f"PDF saved: backend/reports/{session_id}.pdf")
-
-        # ── Forward to progress tracker ───────────────────────
-        if PROGRESS_TRACKER_ADDRESS:
-            await ctx.send(PROGRESS_TRACKER_ADDRESS, ChatMessage(
-                timestamp=datetime.utcnow(),
-                msg_id=uuid4(),
-                content=[TextContent(type="text", text=json.dumps(assessment))],
-            ))
-            ctx.logger.info(f"Forwarded to progress tracker at {PROGRESS_TRACKER_ADDRESS[:30]}...")
-        else:
-            ctx.logger.warning("PROGRESS_TRACKER_ADDRESS not set — skipping progress tracker")
 
         response_text = (
             f"{narrative.get('overall_summary', '')} "

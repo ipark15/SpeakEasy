@@ -13,7 +13,8 @@ from uagents_core.contrib.protocols.chat import (
 
 load_dotenv()
 
-ORCHESTRATOR_ADDRESS = os.getenv("ORCHESTRATOR_AGENT_ADDRESS", "")
+REPORT_GENERATOR_ADDRESS  = os.getenv("ORCHESTRATOR_AGENT_ADDRESS", "")
+PROGRESS_TRACKER_ADDRESS  = os.getenv("PROGRESS_TRACKER_ADDRESS", "")
 
 agent = Agent(
     name="assessment_agent",
@@ -33,18 +34,32 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     ))
 
     text = "".join(item.text for item in msg.content if isinstance(item, TextContent))
-    ctx.logger.info(f"Assessment Agent received scores payload ({len(text)} chars), forwarding to orchestrator")
+    ctx.logger.info(f"Assessment Agent received payload ({len(text)} chars) — fanning out in parallel")
 
-    if not ORCHESTRATOR_ADDRESS:
-        ctx.logger.error("ORCHESTRATOR_AGENT_ADDRESS not set — cannot forward")
-        return
-
-    await ctx.send(ORCHESTRATOR_ADDRESS, ChatMessage(
+    chat_msg = ChatMessage(
         timestamp=datetime.utcnow(),
         msg_id=uuid4(),
         content=[TextContent(type="text", text=text)],
-    ))
-    ctx.logger.info(f"Forwarded to orchestrator at {ORCHESTRATOR_ADDRESS[:30]}...")
+    )
+
+    # Fire both simultaneously — uagents send is async so both kick off before either awaits
+    if REPORT_GENERATOR_ADDRESS:
+        await ctx.send(REPORT_GENERATOR_ADDRESS, ChatMessage(
+            timestamp=datetime.utcnow(), msg_id=uuid4(),
+            content=[TextContent(type="text", text=text)],
+        ))
+        ctx.logger.info(f"→ Report Generator: {REPORT_GENERATOR_ADDRESS[:30]}...")
+    else:
+        ctx.logger.warning("ORCHESTRATOR_AGENT_ADDRESS not set — skipping report generator")
+
+    if PROGRESS_TRACKER_ADDRESS:
+        await ctx.send(PROGRESS_TRACKER_ADDRESS, ChatMessage(
+            timestamp=datetime.utcnow(), msg_id=uuid4(),
+            content=[TextContent(type="text", text=text)],
+        ))
+        ctx.logger.info(f"→ Progress Tracker:  {PROGRESS_TRACKER_ADDRESS[:30]}...")
+    else:
+        ctx.logger.warning("PROGRESS_TRACKER_ADDRESS not set — skipping progress tracker")
 
 
 @protocol.on_message(ChatAcknowledgement)
