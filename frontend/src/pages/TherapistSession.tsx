@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth"
 import { startTherapistSession, type TherapistSession } from "../lib/api"
 
 type Phase = "loading" | "ready" | "connecting" | "connected" | "ended" | "error"
+type ChatEntry = { role: "user" | "agent"; text: string }
 
 const NUM_BARS = 16
 
@@ -104,10 +105,20 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
   setPhase: (p: Phase) => void
   signedUrl: string
 }) {
+  const [chatLog, setChatLog] = useState<ChatEntry[]>([])
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [chatLog])
+
   const conversation = useConversation({
-    onConnect: () => setPhase("connected"),
+    onConnect: () => { setChatLog([]); setPhase("connected") },
     onDisconnect: () => setPhase("ended"),
     onError: () => setPhase("error"),
+    onMessage: ({ message, role }) => {
+      setChatLog(prev => [...prev, { role, text: message }])
+    },
   })
 
   const isSpeaking = conversation.isSpeaking
@@ -185,6 +196,25 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
             </div>
             <p className="font-['Quicksand'] text-[12px] text-[#6b6b8a]">Speak naturally — The coach will respond.</p>
           </div>
+
+          {chatLog.length > 0 && (
+            <div className="w-full rounded-[16px] overflow-y-auto flex flex-col gap-2 p-3"
+              style={{ maxHeight: "220px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(229,231,235,0.8)" }}>
+              {chatLog.map((entry, i) => (
+                <div key={i} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className="max-w-[80%] px-3 py-2 rounded-[12px] font-['Quicksand'] text-[12px] leading-relaxed"
+                    style={entry.role === "user"
+                      ? { background: "#4338ca", color: "white" }
+                      : { background: "white", color: "#1e1b4b", border: "1px solid rgba(229,231,235,0.8)" }
+                    }>
+                    {entry.text}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+          )}
+
           <button
             onClick={handleEnd}
             className="w-full h-[50px] rounded-[18px] font-['Quicksand'] font-semibold text-[15px] cursor-pointer hover:opacity-90 transition-opacity"
