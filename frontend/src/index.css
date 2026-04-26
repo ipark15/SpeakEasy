@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-app: #edeaf8;
+  --color-primary: #4338ca;
+  --color-text-dark: #1e1b4b;
+  --color-text-muted: #9896b0;
+  --color-text-body: #6b6b8a;
+  --border-radius-card: 28px;
+  --font-family-sans: "Outfit", sans-serif;
+  --font-family-serif: "DM Serif Display", serif;
+  --font-family-logo: "Outfit", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #edeaf8;
+  font-family: "Outfit", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
