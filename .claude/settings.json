@@ -36,7 +36,9 @@
       "Bash(git stash *)",
       "Bash(git checkout *)",
       "Bash(curl -s http://localhost:8000/api/report/acd0cfa9-1eaa-4757-8f2b-5af0fa7105d5)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 backend/run_agent.py)",
+      "Bash(python3 -c \"import backend\")"
     ]
   },
   "enabledPlugins": {

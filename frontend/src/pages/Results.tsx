@@ -122,6 +122,21 @@ function RhythmChart({ intervals }: { intervals: number[] }) {
   )
 }
 
+function scoreLabel(v: number) {
+  return v >= 85 ? "Excellent" : v >= 70 ? "Good" : v >= 55 ? "Fair" : "Needs Work"
+}
+
+function scoreColor(v: number) {
+  return v >= 80 ? "#16a34a" : v >= 60 ? "#d97706" : "#dc2626"
+}
+
+function heroText(overall: number) {
+  if (overall >= 85) return { heading: "Excellent work!", subtitle: "Outstanding performance across all speech dimensions." }
+  if (overall >= 70) return { heading: "Great effort!", subtitle: "Strong performance with a few areas to refine." }
+  if (overall >= 55) return { heading: "Good start!", subtitle: "You're making progress — keep practicing." }
+  return { heading: "Keep going!", subtitle: "Every session builds your skills. Stay consistent." }
+}
+
 function generateInsights(breakdown: Record<string, number>) {
   const detected: string[] = []
   const suggestions: string[] = []
@@ -185,9 +200,9 @@ export default function Results() {
     <div className="min-h-screen bg-[#edeaf8] dark:bg-[#0f0e1a]">
       {/* Nav */}
       <nav className="sticky top-0 z-10 sp-nav px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9896b0" strokeWidth="2">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        <button onClick={() => navigate("/assess")} className="flex items-center gap-2.5 font-['Outfit'] font-bold text-[13px] text-[#4338ca] cursor-pointer hover:opacity-70 transition-opacity">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+            <polyline points="15 18 9 12 15 6"/>
           </svg>
           Try Again
         </button>
@@ -296,9 +311,11 @@ export default function Results() {
                   <span key={key} className="flex-1 text-[8px] text-[#9896b0] text-center leading-tight">{label}</span>
                 ))}
               </div>
-            )}
+            </div>
+          </div>
+        </div>
 
-            {tab === "AI Insights" && (
+        {tab === "AI Insights" && (
               <div className="flex flex-col gap-5">
                 <div className="text-center py-6">
                   <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">AI coaching is ready</p>
@@ -336,8 +353,6 @@ export default function Results() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
         {/* Rhythm pattern */}
         <div className="rounded-[24px] p-6 sp-card">
