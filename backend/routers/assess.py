@@ -49,7 +49,7 @@ def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
 
         tasks.append({"task_id": tid, "scores": scores, "metrics": metrics})
         for dim, val in scores.items():
-            if dim != "overall":
+            if dim not in ("overall", "voice_quality"):
                 scores_summary.setdefault(dim, []).append(val)
 
     composite_total = composite_w = 0.0
