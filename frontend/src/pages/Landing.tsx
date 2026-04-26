@@ -1,36 +1,14 @@
-import { useState } from "react"
+import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../hooks/useAuth"
 
 export default function Landing() {
   const navigate = useNavigate()
-  const { user, signIn, signUp } = useAuth()
-  const [showAuth, setShowAuth] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
 
-  if (user) {
-    navigate("/dashboard")
-    return null
-  }
-
-  async function handleAuth(e: React.FormEvent) {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-    const { error: authError } = isSignUp
-      ? await signUp(email, password)
-      : await signIn(email, password)
-    setLoading(false)
-    if (authError) {
-      setError(authError.message)
-    } else {
-      navigate("/dashboard")
-    }
-  }
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true })
+  }, [user])
 
   const features = [
     {
@@ -90,7 +68,7 @@ export default function Landing() {
           </svg>
         </div>
         <button
-          onClick={() => setShowAuth(true)}
+          onClick={() => navigate("/auth")}
           className="bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[14px] h-[41px] px-5 rounded-[14px] cursor-pointer hover:bg-[#3730a3] transition-colors"
         >
           Get Started
@@ -123,66 +101,22 @@ export default function Landing() {
           </p>
 
           {/* CTA */}
-          {!showAuth ? (
-            <div className="flex items-center gap-4 mb-14">
-              <button
-                onClick={() => setShowAuth(true)}
-                className="flex items-center gap-2 bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[16px] h-[56px] px-8 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
-                style={{ boxShadow: "0px 8px 16px rgba(67,56,202,0.32)" }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
-                  <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
-                  <line x1="12" y1="18" x2="12" y2="22"/>
-                  <line x1="8" y1="22" x2="16" y2="22"/>
-                </svg>
-                Start Assessment
-              </button>
-              <span className="font-['Outfit'] font-medium text-[13px] text-[#9896b0]">Free · No account needed</span>
-            </div>
-          ) : (
-            <div
-              className="rounded-[28px] p-8 mb-14 max-w-sm"
-              style={{ background: "rgba(255,255,255,0.82)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0px 4px 12px rgba(99,102,241,0.08)" }}
+          <div className="flex items-center gap-4 mb-14">
+            <button
+              onClick={() => navigate("/auth")}
+              className="flex items-center gap-2 bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[16px] h-[56px] px-8 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+              style={{ boxShadow: "0px 8px 16px rgba(67,56,202,0.32)" }}
             >
-              <h2 className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-6">
-                {isSignUp ? "Create account" : "Sign in"}
-              </h2>
-              <form onSubmit={handleAuth} className="flex flex-col gap-4">
-                <div>
-                  <label className="block font-['Outfit'] text-[13px] text-[#9896b0] mb-1">Email</label>
-                  <input
-                    type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                    className="w-full bg-[#f8f7ff] rounded-[14px] px-4 py-3 font-['Outfit'] text-[14px] text-[#1e1b4b] outline-none focus:ring-2 focus:ring-[#4338ca]/20 border-0"
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div>
-                  <label className="block font-['Outfit'] text-[13px] text-[#9896b0] mb-1">Password</label>
-                  <input
-                    type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                    className="w-full bg-[#f8f7ff] rounded-[14px] px-4 py-3 font-['Outfit'] text-[14px] text-[#1e1b4b] outline-none focus:ring-2 focus:ring-[#4338ca]/20 border-0"
-                    placeholder="••••••••"
-                  />
-                </div>
-                {error && <p className="font-['Outfit'] text-sm text-red-500">{error}</p>}
-                <button
-                  type="submit" disabled={loading}
-                  className="w-full h-[54px] bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50"
-                  style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}
-                >
-                  {loading ? "Please wait…" : isSignUp ? "Create account" : "Sign in"}
-                </button>
-              </form>
-              <p className="font-['Outfit'] text-[13px] text-[#9896b0] mt-4 text-center">
-                {isSignUp ? "Already have an account?" : "No account yet?"}{" "}
-                <button type="button" onClick={() => { setIsSignUp(!isSignUp); setError("") }}
-                  className="text-[#4338ca] hover:underline cursor-pointer">
-                  {isSignUp ? "Sign in" : "Sign up"}
-                </button>
-              </p>
-            </div>
-          )}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+                <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+                <line x1="12" y1="18" x2="12" y2="22"/>
+                <line x1="8" y1="22" x2="16" y2="22"/>
+              </svg>
+              Start Assessment
+            </button>
+            <span className="font-['Outfit'] font-medium text-[13px] text-[#9896b0]">Free · No account needed</span>
+          </div>
 
           {/* Stats */}
           <div className="flex gap-8">
@@ -318,7 +252,7 @@ export default function Landing() {
           Take a 3-minute assessment and discover exactly what to work on.
         </p>
         <button
-          onClick={() => setShowAuth(true)}
+          onClick={() => navigate("/auth")}
           className="flex items-center gap-2 bg-white text-[#4338ca] font-['Outfit'] font-bold text-[16px] h-[56px] px-10 rounded-[18px] mx-auto cursor-pointer hover:bg-white/90 transition-colors"
           style={{ boxShadow: "0px 8px 16px rgba(0,0,0,0.15)" }}
         >

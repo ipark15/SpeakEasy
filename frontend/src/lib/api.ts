@@ -105,7 +105,7 @@ export async function getProfile(userId: string): Promise<ProfileData> {
 }
 
 export async function updateProfile(userId: string, data: { full_name: string }): Promise<void> {
-  return post(`/api/profile/${userId}`, data)
+  return post(`/api/profile`, { user_id: userId, display_name: data.full_name })
 }
 
 // ── WebSocket ────────────────────────────────────────────────────────────────

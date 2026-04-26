@@ -12,7 +12,7 @@ export default function Navbar({ showActions = true }: NavbarProps) {
       style={{ background: "rgba(255,255,255,0.7)", borderBottom: "1px solid rgba(229,231,235,0.5)" }}
       className="sticky top-0 z-50 backdrop-blur-sm px-6 py-4 flex items-center justify-between"
     >
-      <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+      <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
         <div className="w-8 h-8 bg-[#4338ca] rounded-lg flex items-center justify-center">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
             <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
