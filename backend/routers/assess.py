@@ -19,7 +19,9 @@ router = APIRouter()
 
 ALL_TASKS = {"read_sentence", "pataka", "free_speech"}
 _TASK_WEIGHTS = {"read_sentence": 0.40, "pataka": 0.20, "free_speech": 0.40}
-_ORCHESTRATOR_URL = "http://127.0.0.1:8001/submit"
+
+import os as _os
+_ASSESSMENT_AGENT_ADDRESS = _os.getenv("ASSESSMENT_AGENT_ADDRESS", "")
 
 
 def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
@@ -67,18 +69,25 @@ def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
     }
 
 
-async def _trigger_orchestrator(session_id: str, session_data: dict) -> None:
-    """Send the completed assessment to the orchestrator agent (fire-and-forget)."""
+async def _trigger_assessment_agent(session_id: str, session_data: dict) -> None:
+    """Forward completed assessment scores to the Assessment Agent on Agentverse."""
+    if not _ASSESSMENT_AGENT_ADDRESS:
+        return
     try:
-        import httpx
+        from uuid import uuid4
+        from uagents.communication import send_message
+        from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+
         payload = _build_assessment_payload(session_id, session_data)
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            await client.post(
-                _ORCHESTRATOR_URL,
-                json={"session_id": session_id, "assessment_json": json.dumps(payload)},
-            )
-    except Exception:
-        pass  # orchestrator is optional — don't fail the assess response
+        msg = ChatMessage(
+            timestamp=datetime.now(timezone.utc),
+            msg_id=uuid4(),
+            content=[TextContent(type="text", text=json.dumps(payload))],
+        )
+        await send_message(destination=_ASSESSMENT_AGENT_ADDRESS, message=msg)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Assessment agent trigger failed: {e}")
 
 
 # ── Session start ─────────────────────────────────────────────
@@ -115,22 +124,13 @@ def session_get(session_id: str):
 # ── Clinical Report PDF ───────────────────────────────────────
 
 @router.get("/report/{session_id}")
-async def generate_report(session_id: str):
+async def get_report(session_id: str):
     import os
     from fastapi import HTTPException
     from fastapi.responses import FileResponse
-    from backend.agents.orchestrator_agent.gemma_client import generate_narrative
-    from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
-
-    data = db.get_session(session_id)
-    if not data:
-        raise HTTPException(status_code=404, detail="Session not found.")
-    if not data.get("assessments"):
-        raise HTTPException(status_code=404, detail="No assessments in this session.")
 
     pdf_path = f"backend/reports/{session_id}.pdf"
 
-    # Serve cached PDF if it already exists
     if os.path.exists(pdf_path):
         return FileResponse(
             pdf_path,
@@ -138,63 +138,9 @@ async def generate_report(session_id: str):
             filename=f"speech_report_{session_id[:8]}.pdf",
         )
 
-    # Build the Gemma narrative input
-    gemma_input = _build_assessment_payload(session_id, data)
-
-    # Build the pdf_generator input
-    assessments = data["assessments"]
-
-    def _avg(key: str) -> int:
-        vals = [a[key] for a in assessments if a.get(key) is not None]
-        return round(sum(vals) / len(vals)) if vals else 0
-
-    all_pauses: list = []
-    all_low_conf: list = []
-    for a in assessments:
-        all_pauses.extend(a.get("pauses") or [])
-        all_low_conf.extend(a.get("low_confidence_words") or [])
-
-    pdf_input = {
-        "user_id":    data.get("user_id", ""),
-        "session_id": session_id,
-        "scores": {
-            "fluency":       _avg("score_fluency"),
-            "clarity":       _avg("score_clarity"),
-            "rhythm":        _avg("score_rhythm"),
-            "prosody":       _avg("score_prosody"),
-            "voice_quality": _avg("score_voice_quality"),
-            "overall":       round(data.get("overall_score") or gemma_input["composite_score"]),
-        },
-        "features": {
-            "word_error_rate":   next((a["word_error_rate"]   for a in assessments if a.get("word_error_rate")   is not None), 0.0),
-            "ddk_rate":          next((a["ddk_rate"]          for a in assessments if a.get("ddk_rate")          is not None), 5.0),
-            "rhythm_regularity": next((a["rhythm_regularity"] for a in assessments if a.get("rhythm_regularity") is not None), 0.5),
-            "wpm":               next((a["wpm"]               for a in assessments if a.get("wpm")               is not None), 120),
-            "pitch_std":         next((a["pitch_std"]         for a in assessments if a.get("pitch_std")         is not None), 20.0),
-        },
-        "events": {
-            "pauses":               all_pauses,
-            "low_confidence_words": all_low_conf,
-        },
-    }
-
-    narrative = generate_narrative(gemma_input)
-
-    os.makedirs("backend/reports", exist_ok=True)
-    generate_pdf(pdf_input, narrative, pdf_path)
-
-    # Save to DB so History page can show which sessions have reports
-    db.save_report(
-        session_id=session_id,
-        user_id=data.get("user_id", ""),
-        pdf_path=pdf_path,
-        summary=narrative.get("overall_summary", ""),
-    )
-
-    return FileResponse(
-        pdf_path,
-        media_type="application/pdf",
-        filename=f"speech_report_{session_id[:8]}.pdf",
+    raise HTTPException(
+        status_code=404,
+        detail="Report not ready yet — agents are still generating it. Please try again in a few seconds.",
     )
 
 
@@ -213,11 +159,6 @@ async def assess(
     audio_array = bytes_to_array(audio_bytes)
     duration = len(audio_array) / 16000.0
     wav_path = save_temp_wav(audio_array)
-
-    # DEBUG: save a copy so we can hear what the browser sent
-    import shutil as _shutil, os as _os
-    _os.makedirs("backend/debug_audio", exist_ok=True)
-    _shutil.copy(wav_path, f"backend/debug_audio/{task}_{datetime.now().strftime('%H%M%S')}.wav")
 
     try:
         if transcript and word_timestamps:
@@ -311,7 +252,7 @@ async def assess(
                 db.complete_session(session_id, overall)
 
                 # Fire-and-forget: send assessment to orchestrator agent
-                asyncio.create_task(_trigger_orchestrator(session_id, session_data))
+                asyncio.create_task(_trigger_assessment_agent(session_id, session_data))
 
         return response
     finally:

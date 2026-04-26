@@ -158,12 +158,24 @@ export default function Results() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("Feedback")
   const [generatingReport, setGeneratingReport] = useState(false)
+  const [reportError, setReportError] = useState("")
 
   async function handleDownloadReport() {
     if (!sessionId) return
     setGeneratingReport(true)
-    try { await downloadReport(sessionId) } catch {}
-    finally { setGeneratingReport(false) }
+    setReportError("")
+    try {
+      await downloadReport(sessionId)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : ""
+      if (msg.includes("404")) {
+        setReportError("Report not ready yet — please wait a few seconds and try again.")
+      } else {
+        setReportError("Could not download report. Please try again.")
+      }
+    } finally {
+      setGeneratingReport(false)
+    }
   }
 
   useEffect(() => {
@@ -220,6 +232,9 @@ export default function Results() {
             </svg>
             {generatingReport ? "Generating…" : "Clinical Report"}
           </button>
+          {reportError && (
+            <p className="text-[11px] text-red-500 mt-1 max-w-[200px] text-center">{reportError}</p>
+          )}
           <button onClick={() => navigate("/dashboard")}
             className="bg-[#4338ca] text-white font-['Outfit'] font-bold text-[13px] h-[38px] px-5 rounded-[12px] cursor-pointer hover:bg-[#3730a3] transition-colors"
             style={{ boxShadow: "0px 4px 8px rgba(67,56,202,0.28)" }}>

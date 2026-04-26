@@ -117,7 +117,28 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         narrative = generate_narrative(assessment)
         os.makedirs("backend/reports", exist_ok=True)
         session_id = assessment.get("session_id", "session")
-        generate_pdf(assessment, narrative, f"backend/reports/{session_id}.pdf")
+
+        # pdf_generator expects a flat dict with "scores", "features", "events"
+        scores_summary = _scores_from_payload(assessment)
+        tasks = assessment.get("tasks", [])
+        all_pauses, all_low_conf = [], []
+        features: dict = {}
+        for t in tasks:
+            m = t.get("metrics", {})
+            all_pauses.extend(m.get("pauses") or [])
+            all_low_conf.extend(m.get("low_confidence_words") or [])
+            for k in ("wpm", "word_error_rate", "ddk_rate", "rhythm_regularity", "pitch_std"):
+                if k not in features and m.get(k) is not None:
+                    features[k] = m[k]
+
+        pdf_input = {
+            "user_id":    assessment.get("user_id", ""),
+            "session_id": session_id,
+            "scores":     {**scores_summary, "overall": assessment.get("composite_score", 0)},
+            "features":   features,
+            "events":     {"pauses": all_pauses, "low_confidence_words": all_low_conf},
+        }
+        generate_pdf(pdf_input, narrative, f"backend/reports/{session_id}.pdf")
         ctx.logger.info(f"PDF saved: backend/reports/{session_id}.pdf")
 
         # ── Check if coaching is needed ───────────────────────
