@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { getSession, type SessionData } from "../lib/api"
+import { getSession, downloadReport, type SessionData } from "../lib/api"
 
 const DIMS = [
   { key: "fluency", label: "FLUENCY", color: "#4338ca", bg: "rgba(99,102,241,0.1)" },
@@ -39,6 +39,18 @@ export default function Results() {
   const [session, setSession] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("Feedback")
+  const [generatingReport, setGeneratingReport] = useState(false)
+
+  async function handleDownloadReport() {
+    if (!sessionId) return
+    setGeneratingReport(true)
+    try {
+      await downloadReport(sessionId)
+    } catch {
+    } finally {
+      setGeneratingReport(false)
+    }
+  }
 
   useEffect(() => {
     if (!sessionId) return
@@ -70,11 +82,26 @@ export default function Results() {
           </svg>
           Try Again
         </button>
-        <button onClick={() => navigate("/dashboard")}
-          className="bg-[#4338ca] text-white font-['Outfit'] font-bold text-[13px] h-[38px] px-5 rounded-[12px] cursor-pointer hover:bg-[#3730a3] transition-colors"
-          style={{ boxShadow: "0px 4px 8px rgba(67,56,202,0.28)" }}>
-          Dashboard
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadReport}
+            disabled={generatingReport}
+            className="flex items-center gap-2 font-['Outfit'] font-bold text-[13px] h-[38px] px-4 rounded-[12px] cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
+            style={{ background: "rgba(67,56,202,0.08)", color: "#4338ca" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            {generatingReport ? "Generating…" : "Clinical Report"}
+          </button>
+          <button onClick={() => navigate("/dashboard")}
+            className="bg-[#4338ca] text-white font-['Outfit'] font-bold text-[13px] h-[38px] px-5 rounded-[12px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+            style={{ boxShadow: "0px 4px 8px rgba(67,56,202,0.28)" }}>
+            Dashboard
+          </button>
+        </div>
       </nav>
 
       <div className="max-w-[1100px] mx-auto px-8 py-12 w-full">
@@ -186,16 +213,42 @@ export default function Results() {
             )}
 
             {tab === "AI Insights" && (
-              <div className="text-center py-8">
-                <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">AI coaching is ready</p>
-                <p className="font-['Outfit'] font-normal text-[14px] text-[#6b6b8a] mb-8 max-w-sm mx-auto">
-                  Pick a specialized AI coach to work on your specific areas of improvement.
-                </p>
-                <button onClick={() => navigate("/coach")}
-                  className="bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
-                  style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
-                  Choose a Coach
-                </button>
+              <div className="flex flex-col gap-5">
+                <div className="text-center py-6">
+                  <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">AI coaching is ready</p>
+                  <p className="font-['Outfit'] font-normal text-[14px] text-[#6b6b8a] mb-6 max-w-sm mx-auto">
+                    Pick a specialized AI coach to work on your specific areas of improvement.
+                  </p>
+                  <button onClick={() => navigate("/coach")}
+                    className="bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+                    style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
+                    Choose a Coach
+                  </button>
+                </div>
+
+                <div className="rounded-[20px] p-6 flex items-center justify-between gap-6"
+                  style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}>
+                  <div>
+                    <p className="font-['Outfit'] font-bold text-[11px] text-[#9896b0] tracking-[1.1px] uppercase mb-1">For your clinician</p>
+                    <p className="font-['DM_Serif_Display'] text-[20px] text-[#1e1b4b] mb-1">Clinical Report</p>
+                    <p className="font-['Outfit'] font-normal text-[13px] text-[#6b6b8a]">
+                      AI-generated PDF with scores, charts, and SLP-ready narrative. Takes ~15 seconds.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={generatingReport}
+                    className="shrink-0 flex items-center gap-2 h-[46px] px-6 rounded-[14px] font-['Outfit'] font-semibold text-[14px] text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
+                    style={{ background: "#4338ca", boxShadow: "0px 4px 10px rgba(67,56,202,0.28)" }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {generatingReport ? "Generating…" : "Download PDF"}
+                  </button>
+                </div>
               </div>
             )}
           </div>

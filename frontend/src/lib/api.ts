@@ -44,6 +44,18 @@ export async function getSession(sessionId: string): Promise<SessionData> {
   return get(`/api/session/${sessionId}`)
 }
 
+export async function downloadReport(sessionId: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/report/${sessionId}`)
+  if (!res.ok) throw new Error(`GET /api/report/${sessionId} → ${res.status}`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `speech_report_${sessionId.slice(0, 8)}.pdf`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ── Dashboard ───────────────────────────────────────────────────────────────
 
 export type WeeklyScore = { day: string; score: number | null }
@@ -87,6 +99,12 @@ export type HistoryData = {
 
 export async function getHistory(userId: string): Promise<HistoryData> {
   return get(`/api/history/${userId}`)
+}
+
+export type ReportMeta = { session_id: string; generated_at: string; summary: string }
+
+export async function getUserReports(userId: string): Promise<ReportMeta[]> {
+  return get(`/api/reports/${userId}`)
 }
 
 // ── Profile ─────────────────────────────────────────────────────────────────

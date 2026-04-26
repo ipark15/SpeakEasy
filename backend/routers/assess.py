@@ -112,6 +112,92 @@ def session_get(session_id: str):
     return data
 
 
+# ── Clinical Report PDF ───────────────────────────────────────
+
+@router.get("/report/{session_id}")
+async def generate_report(session_id: str):
+    import os
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    from backend.agents.orchestrator_agent.gemma_client import generate_narrative
+    from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
+
+    data = db.get_session(session_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if not data.get("assessments"):
+        raise HTTPException(status_code=404, detail="No assessments in this session.")
+
+    pdf_path = f"backend/reports/{session_id}.pdf"
+
+    # Serve cached PDF if it already exists
+    if os.path.exists(pdf_path):
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=f"speech_report_{session_id[:8]}.pdf",
+        )
+
+    # Build the Gemma narrative input
+    gemma_input = _build_assessment_payload(session_id, data)
+
+    # Build the pdf_generator input
+    assessments = data["assessments"]
+
+    def _avg(key: str) -> int:
+        vals = [a[key] for a in assessments if a.get(key) is not None]
+        return round(sum(vals) / len(vals)) if vals else 0
+
+    all_pauses: list = []
+    all_low_conf: list = []
+    for a in assessments:
+        all_pauses.extend(a.get("pauses") or [])
+        all_low_conf.extend(a.get("low_confidence_words") or [])
+
+    pdf_input = {
+        "user_id":    data.get("user_id", ""),
+        "session_id": session_id,
+        "scores": {
+            "fluency":       _avg("score_fluency"),
+            "clarity":       _avg("score_clarity"),
+            "rhythm":        _avg("score_rhythm"),
+            "prosody":       _avg("score_prosody"),
+            "voice_quality": _avg("score_voice_quality"),
+            "overall":       round(data.get("overall_score") or gemma_input["composite_score"]),
+        },
+        "features": {
+            "word_error_rate":   next((a["word_error_rate"]   for a in assessments if a.get("word_error_rate")   is not None), 0.0),
+            "ddk_rate":          next((a["ddk_rate"]          for a in assessments if a.get("ddk_rate")          is not None), 5.0),
+            "rhythm_regularity": next((a["rhythm_regularity"] for a in assessments if a.get("rhythm_regularity") is not None), 0.5),
+            "wpm":               next((a["wpm"]               for a in assessments if a.get("wpm")               is not None), 120),
+            "pitch_std":         next((a["pitch_std"]         for a in assessments if a.get("pitch_std")         is not None), 20.0),
+        },
+        "events": {
+            "pauses":               all_pauses,
+            "low_confidence_words": all_low_conf,
+        },
+    }
+
+    narrative = generate_narrative(gemma_input)
+
+    os.makedirs("backend/reports", exist_ok=True)
+    generate_pdf(pdf_input, narrative, pdf_path)
+
+    # Save to DB so History page can show which sessions have reports
+    db.save_report(
+        session_id=session_id,
+        user_id=data.get("user_id", ""),
+        pdf_path=pdf_path,
+        summary=narrative.get("overall_summary", ""),
+    )
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"speech_report_{session_id[:8]}.pdf",
+    )
+
+
 # ── Assess ────────────────────────────────────────────────────
 
 @router.post("/assess", response_model=AssessmentResponse)

@@ -175,6 +175,41 @@ def get_profile(user_id: str) -> Optional[dict]:
     return result.data[0] if result.data else None
 
 
+# ── Reports ───────────────────────────────────────────────────
+
+def save_report(session_id: str, user_id: str, pdf_path: str, summary: str = "") -> None:
+    db = get_client()
+    db.table("reports").upsert({
+        "session_id": session_id,
+        "user_id": user_id,
+        "pdf_path": pdf_path,
+        "summary": summary,
+    }).execute()
+
+
+def get_report(session_id: str) -> Optional[dict]:
+    db = get_client()
+    result = (
+        db.table("reports")
+        .select("*")
+        .eq("session_id", session_id)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+def get_user_reports(user_id: str) -> list[dict]:
+    db = get_client()
+    return (
+        db.table("reports")
+        .select("session_id, generated_at, summary")
+        .eq("user_id", user_id)
+        .order("generated_at", desc=True)
+        .execute()
+        .data
+    )
+
+
 # ── Dashboard ─────────────────────────────────────────────────
 
 def get_dashboard_data(user_id: str) -> dict:
