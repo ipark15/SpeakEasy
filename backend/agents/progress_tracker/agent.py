@@ -163,15 +163,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     except Exception as exc:
         ctx.logger.warning(f"Could not save therapist prompt: {exc}")
 
-    if THERAPIST_AGENT_ADDRESS:
-        await ctx.send(THERAPIST_AGENT_ADDRESS, ChatMessage(
-            timestamp=datetime.now(timezone.utc),
-            msg_id=uuid4(),
-            content=[TextContent(type="text", text=json.dumps(payload))],
-        ))
-        ctx.logger.info(f"Forwarded to therapist at {THERAPIST_AGENT_ADDRESS[:30]}...")
-    else:
-        ctx.logger.warning("THERAPIST_AGENT_ADDRESS not set — prompt saved locally, not forwarded")
+    ctx.logger.info("Prompt saved. Therapist session is initiated by frontend via /api/therapist/session.")
 
 
 @protocol.on_message(ChatAcknowledgement)
