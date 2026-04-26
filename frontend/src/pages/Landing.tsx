@@ -68,7 +68,7 @@ export default function Landing() {
         </div>
         <button
           onClick={() => navigate("/auth")}
-          className="bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[14px] h-[41px] px-5 rounded-[14px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+          className="bg-[#4338ca] text-white font-['Quicksand'] font-semibold text-[14px] h-[41px] px-5 rounded-[14px] cursor-pointer hover:bg-[#3730a3] transition-colors"
         >
           Get Started
         </button>
@@ -85,7 +85,7 @@ export default function Landing() {
               <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
               <path d="M19 10v1a7 7 0 0 1-14 0v-1" stroke="#6366f1" strokeWidth="2" fill="none"/>
             </svg>
-            <span className="font-['Outfit'] font-bold text-[11px] text-[#6366f1] tracking-[1.1px] uppercase">AI-Powered Analysis</span>
+            <span className="font-['Quicksand'] font-bold text-[11px] text-[#6366f1] tracking-[1.1px] uppercase">AI-Powered Analysis</span>
           </div>
 
           {/* Heading */}
@@ -95,7 +95,7 @@ export default function Landing() {
           </h1>
 
           {/* Subtitle */}
-          <p className="font-['Outfit'] font-normal text-[17px] leading-[28px] text-[#6b6b8a] max-w-[400px] mb-12">
+          <p className="font-['Quicksand'] font-normal text-[17px] leading-[28px] text-[#6b6b8a] max-w-[400px] mb-12">
             Record a short speech sample and get instant, objective scores on fluency, clarity, rhythm, and pacing — powered by AI.
           </p>
 
@@ -103,7 +103,7 @@ export default function Landing() {
           <div className="flex items-center gap-4 mb-14">
             <button
               onClick={() => navigate("/auth")}
-              className="flex items-center gap-2 bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[16px] h-[56px] px-8 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+              className="flex items-center gap-2 bg-[#4338ca] text-white font-['Quicksand'] font-semibold text-[16px] h-[56px] px-8 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
               style={{ boxShadow: "0px 8px 16px rgba(67,56,202,0.32)" }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
@@ -114,7 +114,7 @@ export default function Landing() {
               </svg>
               Start Assessment
             </button>
-            <span className="font-['Outfit'] font-medium text-[13px] text-[#9896b0]">Free · No account needed</span>
+            <span className="font-['Quicksand'] font-medium text-[13px] text-[#9896b0]">Free · No account needed</span>
           </div>
 
           {/* Stats */}
@@ -122,7 +122,7 @@ export default function Landing() {
             {stats.map((s) => (
               <div key={s.label}>
                 <p className="font-['DM_Serif_Display'] text-[26px] text-[#1e1b4b] leading-[26px]">{s.value}</p>
-                <p className="font-['Outfit'] font-semibold text-[10px] text-[#9896b0] tracking-[1px] uppercase mt-1">{s.label}</p>
+                <p className="font-['Quicksand'] font-semibold text-[10px] text-[#9896b0] tracking-[1px] uppercase mt-1">{s.label}</p>
               </div>
             ))}
           </div>
@@ -152,31 +152,31 @@ export default function Landing() {
             </div>
             <div>
               <p className="font-['DM_Serif_Display'] text-[28px] text-white leading-[30px]">Fluency Score</p>
-              <p className="font-['Outfit'] font-semibold text-[11px] tracking-[1.1px] uppercase mt-1" style={{ color: "rgba(200,195,255,0.9)" }}>Achievement unlocked</p>
+              <p className="font-['Quicksand'] font-semibold text-[11px] tracking-[1.1px] uppercase mt-1" style={{ color: "rgba(200,195,255,0.9)" }}>Achievement unlocked</p>
             </div>
           </div>
           {/* Dashboard card */}
           <div className="absolute left-[110px] top-[170px] w-[300px] rounded-[28px] p-5"
             style={{ background: "rgba(255,255,255,0.92)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0px 12px 24px rgba(99,102,241,0.12)" }}>
-            <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1.2px] uppercase mb-3">Dashboard</p>
+            <p className="font-['Quicksand'] font-bold text-[10px] text-[#9896b0] tracking-[1.2px] uppercase mb-3">Dashboard</p>
             <div className="flex gap-3 mb-3">
               <div className="flex-1 bg-[#f8f7ff] rounded-[18px] p-4">
-                <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-2">Current Streak</p>
+                <p className="font-['Quicksand'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-2">Current Streak</p>
                 <div className="flex items-baseline gap-1">
                   <span className="font-['DM_Serif_Display'] text-[36px] text-[#1e1b4b]">7</span>
-                  <span className="font-['Outfit'] font-medium text-[14px] text-[#6b6b8a]">days</span>
+                  <span className="font-['Quicksand'] font-medium text-[14px] text-[#6b6b8a]">days</span>
                 </div>
               </div>
               <div className="flex-1 bg-[#f8f7ff] rounded-[18px] p-4">
-                <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-2">Avg Score</p>
+                <p className="font-['Quicksand'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-2">Avg Score</p>
                 <div className="flex items-baseline gap-1">
                   <span className="font-['DM_Serif_Display'] text-[36px] text-[#1e1b4b]">84</span>
-                  <span className="font-['Outfit'] font-medium text-[14px] text-[#6b6b8a]">/100</span>
+                  <span className="font-['Quicksand'] font-medium text-[14px] text-[#6b6b8a]">/100</span>
                 </div>
               </div>
             </div>
             <div className="bg-[#f8f7ff] rounded-[18px] p-4">
-              <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-2">Sessions completed</p>
+              <p className="font-['Quicksand'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-2">Sessions completed</p>
               <div className="flex items-center gap-3">
                 <span className="font-['DM_Serif_Display'] text-[34px] text-[#1e1b4b]">12</span>
                 <div className="flex gap-1">
@@ -196,9 +196,9 @@ export default function Landing() {
                 <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
               </svg>
             </div>
-            <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-1">Improvement</p>
+            <p className="font-['Quicksand'] font-bold text-[10px] text-[#9896b0] tracking-[1px] uppercase mb-1">Improvement</p>
             <p className="font-['DM_Serif_Display'] text-[28px] text-[#1e1b4b]">+18%</p>
-            <p className="font-['Outfit'] font-medium text-[10px] text-[#b5b3cc]">This week</p>
+            <p className="font-['Quicksand'] font-medium text-[10px] text-[#b5b3cc]">This week</p>
           </div>
           {/* AI Feedback pill */}
           <div className="absolute left-0 top-[110px] flex items-center gap-2 h-[52px] px-4 rounded-[16px]"
@@ -210,8 +210,8 @@ export default function Landing() {
               </svg>
             </div>
             <div>
-              <p className="font-['Outfit'] font-bold text-[11px] text-[#1e1b4b]">AI Feedback</p>
-              <p className="font-['Outfit'] font-medium text-[9px] text-[#9896b0]">Ready</p>
+              <p className="font-['Quicksand'] font-bold text-[11px] text-[#1e1b4b]">AI Feedback</p>
+              <p className="font-['Quicksand'] font-medium text-[9px] text-[#9896b0]">Ready</p>
             </div>
           </div>
         </div>
@@ -219,7 +219,7 @@ export default function Landing() {
 
       {/* Features section */}
       <div className="max-w-[1152px] mx-auto px-8 pb-20">
-        <p className="font-['Outfit'] font-bold text-[11px] text-[#9896b0] tracking-[1.32px] uppercase text-center mb-3">What you get</p>
+        <p className="font-['Quicksand'] font-bold text-[11px] text-[#9896b0] tracking-[1.32px] uppercase text-center mb-3">What you get</p>
         <h2 className="font-['DM_Serif_Display'] text-[50px] text-[#1e1b4b] text-center leading-[75px] mb-12">
           Everything you need<br />to improve
         </h2>
@@ -230,9 +230,9 @@ export default function Landing() {
               <div className="w-12 h-12 rounded-[16px] flex items-center justify-center mb-10" style={{ background: f.iconBg }}>
                 {f.icon}
               </div>
-              <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1.2px] uppercase mb-2">{f.label}</p>
+              <p className="font-['Quicksand'] font-bold text-[10px] text-[#9896b0] tracking-[1.2px] uppercase mb-2">{f.label}</p>
               <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">{f.title}</p>
-              <p className="font-['Outfit'] font-normal text-[14px] leading-[22px] text-[#6b6b8a]">{f.desc}</p>
+              <p className="font-['Quicksand'] font-normal text-[14px] leading-[22px] text-[#6b6b8a]">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -243,16 +243,16 @@ export default function Landing() {
         style={{ background: "linear-gradient(157deg, #4338ca 0%, #5b4fcf 60%, #6d64d6 100%)", boxShadow: "0px 24px 80px rgba(67,56,202,0.35)" }}>
         <div className="absolute top-[-80px] right-[-50px] w-[300px] h-[300px] rounded-[150px] bg-white/[0.04]" />
         <div className="absolute bottom-[-81px] left-[-40px] w-[200px] h-[200px] rounded-[100px] bg-white/[0.05]" />
-        <p className="font-['Outfit'] font-bold text-[11px] tracking-[1.32px] uppercase mb-8" style={{ color: "rgba(200,195,255,0.85)" }}>Start today</p>
+        <p className="font-['Quicksand'] font-bold text-[11px] tracking-[1.32px] uppercase mb-8" style={{ color: "rgba(200,195,255,0.85)" }}>Start today</p>
         <h2 className="font-['DM_Serif_Display'] text-[54px] text-white leading-[59px] mb-6">
           Your voice deserves<br />to be heard clearly.
         </h2>
-        <p className="font-['Outfit'] font-normal text-[16px] leading-[26px] mb-12 max-w-[400px] mx-auto" style={{ color: "rgba(200,195,255,0.85)" }}>
+        <p className="font-['Quicksand'] font-normal text-[16px] leading-[26px] mb-12 max-w-[400px] mx-auto" style={{ color: "rgba(200,195,255,0.85)" }}>
           Take a 3-minute assessment and discover exactly what to work on.
         </p>
         <button
           onClick={() => navigate("/auth")}
-          className="flex items-center gap-2 bg-white text-[#4338ca] font-['Outfit'] font-bold text-[16px] h-[56px] px-10 rounded-[18px] mx-auto cursor-pointer hover:bg-white/90 transition-colors"
+          className="flex items-center gap-2 bg-white text-[#4338ca] font-['Quicksand'] font-bold text-[16px] h-[56px] px-10 rounded-[18px] mx-auto cursor-pointer hover:bg-white/90 transition-colors"
           style={{ boxShadow: "0px 8px 16px rgba(0,0,0,0.15)" }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">

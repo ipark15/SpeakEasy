@@ -1,73 +1,39 @@
 import { useEffect, useRef, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { useAuth } from "../hooks/useAuth"
 import { useRecorder } from "../hooks/useRecorder"
 import { coachWebSocket } from "../lib/api"
 
 type Message = { from: "coach" | "user"; text: string }
 
-const COACH_META: Record<string, { label: string; name: string; intro: string }> = {
-  fluency: {
-    label: "FLUENCY",
-    name: "Fluency Coach",
-    intro: "Hi! I'm here to help you speak more smoothly and confidently. Let's work on eliminating hesitations. To start — tell me about a recent conversation you found challenging.",
-  },
-  clarity: {
-    label: "CLARITY",
-    name: "Clarity Coach",
-    intro: "Good day! I'm focused on helping you articulate clearly and precisely. Let's practice making every word crystal clear. To get started, tell me about your day. What's the most interesting thing that happened to you recently?",
-  },
-  rhythm: {
-    label: "RHYTHM",
-    name: "Rhythm Coach",
-    intro: "Welcome! I'll help you find your natural speech rhythm and timing. Let's begin — tell me about something you're excited about right now.",
-  },
-  prosody: {
-    label: "PROSODY",
-    name: "Prosody Coach",
-    intro: "Hello! I'm your prosody guide — we'll work on making your voice expressive and engaging. Read this aloud or describe your morning routine in a few sentences.",
-  },
-  pronunciation: {
-    label: "PRONUNCIATION",
-    name: "Pronunciation Coach",
-    intro: "Hi there! I'll help you perfect your pronunciation sound by sound. Let's start simple — say the sentence: 'She sells sea shells by the seashore' and I'll give you feedback.",
-  },
-}
+const POST_ASSESSMENT_INTRO =
+  "Hi! I've reviewed your assessment results and I'm ready to give you personalised feedback. What would you like to work on first — or just say hello and we'll start from your scores."
 
-const SESSION_DURATION = 5 * 60
-
-function formatTime(s: number) {
-  const m = Math.floor(s / 60)
-  const sec = s % 60
-  return `${m}:${sec.toString().padStart(2, "0")}`
-}
+const HISTORY_INTRO =
+  "Welcome back! I've looked at your session history and I'm here to help you keep improving. What's been feeling hardest lately, or would you like me to highlight what your scores suggest?"
 
 export default function LiveSession() {
   const navigate = useNavigate()
-  const { type = "clarity" } = useParams<{ type: string }>()
-  const meta = COACH_META[type] ?? COACH_META.clarity
+  const { user } = useAuth()
+  const [searchParams] = useSearchParams()
+  const sessionId = searchParams.get("sessionId")
+  const isPostAssessment = !!sessionId
+
+  const intro = isPostAssessment ? POST_ASSESSMENT_INTRO : HISTORY_INTRO
 
   const [messages, setMessages] = useState<Message[]>([
-    { from: "coach", text: meta.intro },
+    { from: "coach", text: intro },
   ])
-  const [elapsed, setElapsed] = useState(0)
   const [wsReady, setWsReady] = useState(false)
 
   const wsRef = useRef<WebSocket | null>(null)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
-  const sessionId = useRef(`demo-${Date.now()}`)
+  const wsSessionId = useRef(sessionId ?? `history-${user?.id ?? Date.now()}`)
 
   const { start, stop, isRecording, blob } = useRecorder()
 
-  // Timer
   useEffect(() => {
-    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [])
-
-  // WebSocket
-  useEffect(() => {
-    const ws = coachWebSocket(sessionId.current)
+    const ws = coachWebSocket(wsSessionId.current)
     wsRef.current = ws
 
     ws.onopen = () => setWsReady(true)
@@ -85,7 +51,6 @@ export default function LiveSession() {
     return () => ws.close()
   }, [])
 
-  // Send audio blob when recording stops
   useEffect(() => {
     if (!blob) return
     if (wsReady && wsRef.current?.readyState === WebSocket.OPEN) {
@@ -93,25 +58,18 @@ export default function LiveSession() {
     }
   }, [blob, wsReady])
 
-  // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const remaining = Math.max(0, SESSION_DURATION - elapsed)
-
   function handleEnd() {
     wsRef.current?.close()
-    if (timerRef.current) clearInterval(timerRef.current)
-    navigate("/dashboard")
+    navigate(isPostAssessment ? `/results/${sessionId}` : "/dashboard")
   }
 
   function handleMic() {
-    if (isRecording) {
-      stop()
-    } else {
-      start()
-    }
+    if (isRecording) stop()
+    else start()
   }
 
   return (
@@ -138,23 +96,19 @@ export default function LiveSession() {
             </svg>
           </div>
           <div>
-            <p className="text-[10px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase">{meta.label}</p>
-            <p className="text-[15px] font-semibold text-[#1e2939]">{meta.name}</p>
+            <p className="text-[10px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase">
+              {isPostAssessment ? "Post-Assessment" : "Ongoing Support"}
+            </p>
+            <p className="text-[15px] font-semibold text-[#1e2939] font-['Quicksand']">Speech Coach</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <p className="text-[18px] font-bold text-[#1e2939] tabular-nums">{formatTime(elapsed)}</p>
-            <p className="text-[11px] text-[#6a7282]">{formatTime(remaining)} left</p>
-          </div>
-          <button
-            onClick={handleEnd}
-            className="px-4 py-2 rounded-[10px] text-[13px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
-          >
-            End
-          </button>
-        </div>
+        <button
+          onClick={handleEnd}
+          className="px-4 py-2 rounded-[10px] text-[13px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors"
+        >
+          End session
+        </button>
       </div>
 
       {/* Messages */}
@@ -168,10 +122,10 @@ export default function LiveSession() {
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5" />
                     </svg>
-                    {meta.name}
+                    Speech Coach
                   </p>
                   <div
-                    className="rounded-[20px] rounded-tl-[6px] px-5 py-4 text-[14px] text-[#1e2939] leading-relaxed"
+                    className="rounded-[20px] rounded-tl-[6px] px-5 py-4 text-[14px] text-[#1e2939] leading-relaxed font-['Quicksand']"
                     style={{ background: "rgba(255,255,255,0.9)", border: "1px solid rgba(229,231,235,0.5)", boxShadow: "0 2px 8px rgba(99,102,241,0.06)" }}
                   >
                     {msg.text}
@@ -180,7 +134,7 @@ export default function LiveSession() {
               )}
               {msg.from === "user" && (
                 <div
-                  className="rounded-[20px] rounded-tr-[6px] px-5 py-4 text-[14px] text-white leading-relaxed max-w-[85%]"
+                  className="rounded-[20px] rounded-tr-[6px] px-5 py-4 text-[14px] text-white leading-relaxed max-w-[85%] font-['Quicksand']"
                   style={{ background: "#4338ca" }}
                 >
                   {msg.text}
@@ -197,7 +151,7 @@ export default function LiveSession() {
         className="px-6 py-5 flex items-center justify-center gap-6"
         style={{ background: "rgba(255,255,255,0.85)", borderTop: "1px solid rgba(229,231,235,0.4)", backdropFilter: "blur(8px)" }}
       >
-        <span className="text-[13px] text-[#6a7282]">Tap to speak</span>
+        <span className="text-[13px] text-[#6a7282] font-['Quicksand']">Tap to speak</span>
 
         <button
           onClick={handleMic}
@@ -221,7 +175,7 @@ export default function LiveSession() {
           )}
         </button>
 
-        <span className="text-[13px] text-[#6a7282]">
+        <span className="text-[13px] text-[#6a7282] font-['Quicksand']">
           {isRecording ? "Recording…" : "Click to start"}
         </span>
       </div>
