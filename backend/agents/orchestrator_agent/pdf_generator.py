@@ -117,7 +117,14 @@ def generate_pdf(assessment: dict, narrative: dict, output_path: str) -> str:
     )
     body_style = ParagraphStyle(
         "Body", parent=base["Normal"],
-        fontSize=10, leading=15, spaceAfter=4,
+        fontSize=10, leading=16, spaceAfter=4,
+    )
+    highlights_style = ParagraphStyle(
+        "Highlights", parent=base["Normal"],
+        fontSize=10, leading=18, spaceAfter=4,
+        leftIndent=8, rightIndent=8,
+        backColor=colors.HexColor("#F8F9FA"),
+        borderPadding=(8, 8, 8, 8),
     )
     disclaimer_style = ParagraphStyle(
         "Disclaimer", parent=base["Normal"],
@@ -186,18 +193,18 @@ def generate_pdf(assessment: dict, narrative: dict, output_path: str) -> str:
 
     # ── narrative sections ──
     narrative_sections = [
-        ("Summary",                      "overall_summary"),
-        ("Data Highlights",              "data_highlights"),
-        ("Strengths",                    "strengths"),
-        ("Areas for Improvement",        "weaknesses"),
-        ("Specific Challenging Moments", "struggled_moments"),
-        ("Improvement Exercises",        "recommendations"),
-        ("Recommended Next Focus",       "next_focus"),
+        ("Summary",                      "overall_summary",   body_style),
+        ("Key Metrics at a Glance",      "data_highlights",   highlights_style),
+        ("Strengths",                    "strengths",         body_style),
+        ("Areas for Improvement",        "weaknesses",        body_style),
+        ("Challenging Moments",          "struggled_moments", body_style),
+        ("Improvement Exercises",        "recommendations",   body_style),
+        ("Next Focus",                   "next_focus",        body_style),
     ]
-    for title, key in narrative_sections:
+    for title, key, style in narrative_sections:
         story.append(Paragraph(title, section_header))
         text = narrative.get(key, "").replace("\n", "<br/>")
-        story.append(Paragraph(text or "—", body_style))
+        story.append(Paragraph(text or "—", style))
 
     # ── disclaimer ──
     story.append(Spacer(1, 0.1 * inch))

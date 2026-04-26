@@ -8,7 +8,6 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 _SECTION_TAGS = [
     ("[SUMMARY]",           "overall_summary"),
-    ("[DATA_HIGHLIGHTS]",   "data_highlights"),
     ("[STRENGTHS]",         "strengths"),
     ("[WEAKNESSES]",        "weaknesses"),
     ("[STRUGGLED_MOMENTS]", "struggled_moments"),
@@ -161,33 +160,40 @@ NOTABLE EVENTS
     {low_conf_text}
 
 ═══════════════════════════════════════════════
-Now write the report using EXACTLY these seven section headers (keep brackets, write nothing outside them):
+FORMATTING RULES (strictly follow these):
+═══════════════════════════════════════════════
+The output will be rendered in a PDF that supports a small subset of HTML tags inside paragraphs.
+You MUST use these tags — plain text walls are not acceptable:
+
+  <b>text</b>              — bold any metric value, score, or key term
+  <font color="#E53935">text</font>   — red: flag problem areas, scores below 50, "needs work"
+  <font color="#FB8C00">text</font>   — orange: caution, scores 50–69, "borderline"
+  <font color="#43A047">text</font>   — green: good results, scores ≥ 70, "on track"
+  • (bullet)               — start each list item with a bullet character
+
+Do NOT use markdown (no **, no ##, no ```). Only the HTML tags above.
+
+═══════════════════════════════════════════════
+Now write the report using EXACTLY these six section headers (keep brackets, write nothing outside them):
 ═══════════════════════════════════════════════
 
 [SUMMARY]
-2–3 warm, plain-English sentences. State the composite score, name the strongest and weakest dimension by score, and reference one specific observation from the transcripts or metrics (e.g. actual WPM value or a pause duration).
-
-[DATA_HIGHLIGHTS]
-A concise data table or bullet list of the 4–6 most clinically meaningful numbers from this session. For each, state: the metric name, the patient's value, the normal range, and a one-word interpretation (e.g. Normal / Slow / Strong / Irregular). Example format:
-• DDK Rate: 4.2 syl/sec (normal 5–7) — Slow
-• Pitch Variation: 38 Hz std (normal 20–55) — Normal
-• Word Confidence: 72% (target >85%) — Below target
-Focus on the numbers that best explain the dimension scores.
+2–3 sentences. Bold the composite score. Color the strongest dimension <font color="#43A047">green</font> and the weakest <font color="#E53935">red</font>. End with one specific observation from the data (e.g. actual WPM, a pause duration, or a low-confidence word).
 
 [STRENGTHS]
-2–3 bullet points. Cite specific metric values or task scores. Name words from the transcript they pronounced well if confidence was high on them.
+2–3 bullet points (• ). Bold every metric value. Color values that beat the benchmark <font color="#43A047">green</font>. Be specific — cite task scores and words they said clearly.
 
 [WEAKNESSES]
-2–3 bullet points. Be specific — reference actual metric values vs benchmarks. Mention the exact dimension score and why it's low (e.g. "WER of 0.18 on the read-aloud task indicates...").
+2–3 bullet points (• ). Bold every metric value. Color values below benchmark <font color="#E53935">red</font> if severe, <font color="#FB8C00">orange</font> if borderline. State the gap vs the normal range (e.g. "<b>WER 0.22</b> vs normal <0.10").
 
 [STRUGGLED_MOMENTS]
-2–4 sentences. Name specific low-confidence words (from the list above) and explain what that likely means phonetically. Reference the longest pause with its exact duration and where it likely fell in the transcript.
+2–4 sentences. Wrap each low-confidence word in <font color="#E53935"><b>word</b></font>. Bold the longest pause duration. Explain in plain language what the pattern suggests (e.g. difficulty with consonant clusters, word-finding hesitation).
 
 [RECOMMENDATIONS]
-Exactly 3 numbered, specific, actionable exercises. Each must target a specific weak metric by name. Include the exact phrase or syllable sequence to practice. Example: "1. Pa-ta-ka drill: repeat 'pa-ta-ka' 10 times at a steady beat, targeting your DDK rate of 4.2 syl/sec up toward 5–7."
+Exactly 3 bullet points (• ). Bold the target metric and the drill phrase. Color the target range <font color="#43A047">green</font>. Each must name the specific weak metric value and what to aim for.
 
 [NEXT_FOCUS]
-1–2 sentences. Name the single lowest-scoring dimension, state its score, and explain in plain language why improving it will have the most impact based on the data.
+1–2 sentences. Bold the dimension name and its score. Color it <font color="#E53935">red</font>. One plain-language reason why it matters most.
 """
 
 
@@ -211,10 +217,92 @@ def _parse_sections(text: str) -> dict:
     return sections
 
 
+def _build_data_highlights(assessment: dict) -> str:
+    """
+    Build a color-coded HTML bullet list of key metrics for the PDF.
+    Entirely Python — no LLM needed, always renders cleanly.
+    """
+    tasks = assessment.get("tasks", [])
+    rows = []
+
+    def _status(val, good, warn):
+        """Return (color, label) based on thresholds. good/warn are (lo, hi) ranges or None."""
+        if good is None:
+            return "#757575", "N/A"
+        lo_g, hi_g = good
+        lo_w, hi_w = warn
+        in_good = (lo_g is None or val >= lo_g) and (hi_g is None or val <= hi_g)
+        in_warn = (lo_w is None or val >= lo_w) and (hi_w is None or val <= hi_w)
+        if in_good:
+            return "#43A047", "Good"
+        if in_warn:
+            return "#FB8C00", "Fair"
+        return "#E53935", "Low"
+
+    def row(label, val_str, range_str, color, status):
+        return (
+            f'• <b>{label}:</b> <font color="{color}"><b>{val_str}</b></font> '
+            f'<font color="#757575">(normal: {range_str})</font> '
+            f'— <font color="{color}"><b>{status}</b></font>'
+        )
+
+    for t in tasks:
+        tid = t.get("task_id")
+        m = t.get("metrics", {})
+
+        if tid == "read_sentence":
+            if m.get("wpm") is not None:
+                c, s = _status(m["wpm"], (110, 175), (85, 210))
+                rows.append(row("Speaking Rate (read)", f"{m['wpm']:.0f} wpm", "130–160 wpm", c, s))
+            if m.get("word_error_rate") is not None:
+                wer = m["word_error_rate"]
+                c = "#43A047" if wer <= 0.05 else "#FB8C00" if wer <= 0.15 else "#E53935"
+                s = "Excellent" if wer <= 0.05 else "Fair" if wer <= 0.15 else "Needs Work"
+                rows.append(row("Word Error Rate", f"{wer:.0%}", "<10% errors", c, s))
+            if m.get("avg_word_confidence") is not None:
+                c, s = _status(m["avg_word_confidence"], (0.85, None), (0.70, None))
+                rows.append(row("Pronunciation Clarity (read)", f"{m['avg_word_confidence']:.0%}", ">85%", c, s))
+
+        elif tid == "pataka":
+            if m.get("ddk_rate") is not None:
+                c, s = _status(m["ddk_rate"], (5.0, 7.5), (4.0, 9.0))
+                rows.append(row("DDK Rate (pa-ta-ka)", f"{m['ddk_rate']:.1f} syl/sec", "5–7 syl/sec", c, s))
+            if m.get("rhythm_regularity") is not None:
+                c, s = _status(m["rhythm_regularity"], (0.75, None), (0.55, None))
+                rows.append(row("Rhythm Regularity", f"{m['rhythm_regularity']:.2f}", ">0.75", c, s))
+
+        elif tid == "free_speech":
+            if m.get("wpm") is not None:
+                c, s = _status(m["wpm"], (110, 175), (85, 210))
+                rows.append(row("Speaking Rate (free)", f"{m['wpm']:.0f} wpm", "130–160 wpm", c, s))
+            if m.get("filler_count") is not None:
+                fc = m["filler_count"]
+                c = "#43A047" if fc <= 2 else "#FB8C00" if fc <= 5 else "#E53935"
+                s = "Good" if fc <= 2 else "Fair" if fc <= 5 else "High"
+                rows.append(row("Filler Words", str(fc), "0–2 per task", c, s))
+            if m.get("pitch_std") is not None:
+                c, s = _status(m["pitch_std"], (20, 55), (12, 70))
+                rows.append(row("Pitch Variation", f"{m['pitch_std']:.1f} Hz", "20–55 Hz", c, s))
+            if m.get("avg_word_confidence") is not None:
+                c, s = _status(m["avg_word_confidence"], (0.85, None), (0.70, None))
+                rows.append(row("Pronunciation Clarity (free)", f"{m['avg_word_confidence']:.0%}", ">85%", c, s))
+            if m.get("pause_count") is not None:
+                pc = m["pause_count"]
+                c = "#43A047" if pc <= 3 else "#FB8C00" if pc <= 6 else "#E53935"
+                s = "Normal" if pc <= 3 else "Frequent" if pc <= 6 else "Very frequent"
+                max_p = m.get("max_pause_duration")
+                val_str = f"{pc} pauses" + (f", longest {max_p:.1f}s" if max_p else "")
+                rows.append(row("Hesitation Pauses", val_str, "0–3 pauses", c, s))
+
+    return "<br/>".join(rows) if rows else "No detailed metrics available."
+
+
 def generate_narrative(assessment: dict) -> dict:
     prompt = _build_prompt(assessment)
     response = client.models.generate_content(
         model="gemma-4-31b-it",
         contents=prompt,
     )
-    return _parse_sections(response.text)
+    result = _parse_sections(response.text)
+    result["data_highlights"] = _build_data_highlights(assessment)
+    return result
