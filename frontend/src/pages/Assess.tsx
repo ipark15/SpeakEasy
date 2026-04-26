@@ -7,26 +7,26 @@ import { startSession, submitAssessment } from "../lib/api"
 const STEPS = [
   {
     task: "read_sentence",
-    navLabel: "Exercise 01 — Type 1",
-    heading: "Type 1",
+    navLabel: "Exercise 01 — Read Aloud",
+    heading: "Read Aloud",
     exerciseLabel: "Exercise 1 of 3",
-    instruction: "Please read the following sentence aloud as clearly as you can.",
+    instruction: "Please read the following sentence aloud as clearly as you can: \"Please call Stella and ask her to bring these things with her from the store.\"",
     duration: 10,
   },
   {
     task: "pataka",
-    navLabel: "Exercise 02 — Type 2",
-    heading: "Type 2",
+    navLabel: "Exercise 02 — Pa-Ta-Ka",
+    heading: "Pa-Ta-Ka",
     exerciseLabel: "Exercise 2 of 3",
-    instruction: `Please repeat "pa-ta-ka" as clearly and consistently as you can.`,
+    instruction: `Repeat "pa-ta-ka" as quickly and clearly as you can for the full duration.`,
     duration: 8,
   },
   {
     task: "free_speech",
-    navLabel: "Exercise 03 — Type 3",
-    heading: "Type 3",
+    navLabel: "Exercise 03 — Free Speech",
+    heading: "Free Speech",
     exerciseLabel: "Exercise 3 of 3",
-    instruction: "Tell us about one thing you did yesterday, speaking naturally.",
+    instruction: "Tell me one thing you did yesterday, speaking naturally.",
     duration: 20,
   },
 ]
@@ -34,17 +34,20 @@ const STEPS = [
 export default function Assess() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { start, stop, blob, isRecording, seconds, reset } = useRecorder()
+  const { start, stop, blob, isRecording, seconds, reset, recorderError } = useRecorder()
 
   const [step, setStep] = useState<0 | 1 | 2>(0)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!user) return
-    startSession(user.id).then(({ session_id }) => setSessionId(session_id))
+    startSession(user.id)
+      .then(({ session_id }) => setSessionId(session_id))
+      .catch(() => setSessionError("Could not start session — is the backend running?"))
   }, [user])
 
   useEffect(() => {
@@ -173,11 +176,15 @@ export default function Assess() {
             )}
           </div>
 
-          {error && <p className="font-['Outfit'] text-sm text-red-500 text-center mb-4">{error}</p>}
+          {(error || recorderError || sessionError) && (
+            <p className="font-['Outfit'] text-sm text-red-500 text-center mb-4">
+              {error || recorderError || sessionError}
+            </p>
+          )}
 
           {/* Button */}
           {!isRecording && !submitting && (
-            <button onClick={start} disabled={!sessionId}
+            <button onClick={start} disabled={!!sessionError}
               className="w-full h-[54px] bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] rounded-[18px] flex items-center justify-center gap-2 cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50"
               style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">

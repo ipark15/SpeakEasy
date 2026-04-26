@@ -17,9 +17,13 @@
   box-sizing: border-box;
 }
 
+html {
+  background-color: #f5f3ff;
+}
+
 body {
   margin: 0;
-  background-color: #edeaf8;
+  background-color: #f5f3ff;
   font-family: "Outfit", sans-serif;
 }
 

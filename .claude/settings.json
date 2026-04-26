@@ -21,7 +21,15 @@
       "Bash(pip show *)",
       "Bash(pipenv run *)",
       "Bash(python3 -m ast backend/routers/dashboard.py)",
-      "Bash(python3 -m ast backend/db/queries.py)"
+      "Bash(python3 -m ast backend/db/queries.py)",
+      "Bash(python3 -m ast /Users/isaiah/SpeakEasy/backend/routers/dashboard.py)",
+      "Bash(python3 -m ast /Users/isaiah/SpeakEasy/backend/routers/assess.py)",
+      "Bash(python3 -m ast /Users/isaiah/SpeakEasy/backend/db/queries.py)",
+      "Bash(python main.py)",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(pip3 install *)",
+      "Bash(python -m uvicorn backend.app:app --port 8000)",
+      "Bash(pkill -f \"uvicorn backend.app\")"
     ]
   },
   "enabledPlugins": {

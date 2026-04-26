@@ -77,13 +77,26 @@ const QUICK_ACTIONS = [
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [data, setData] = useState<DashboardData>(MOCK)
+  const [data, setData] = useState<DashboardData | null>(null)
   const today = todayIndex()
 
   useEffect(() => {
     if (!user) return
-    getDashboard(user.id).then(setData).catch(() => {})
+    getDashboard(user.id).then(setData).catch(() => setData(MOCK))
   }, [user])
+
+  if (!data) return (
+    <div className="min-h-screen bg-[#f5f3ff]">
+      <Navbar />
+      <div className="max-w-[1088px] mx-auto px-8 py-8 flex flex-col gap-6">
+        <div className="h-8 w-48 rounded-xl bg-[#e0daf7] animate-pulse" />
+        <div className="grid grid-cols-4 gap-4">
+          {[0,1,2,3].map(i => <div key={i} className="h-28 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+        </div>
+        <div className="h-48 rounded-[24px] bg-[#e0daf7] animate-pulse" />
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[#f5f3ff]">

@@ -8,7 +8,7 @@ import { getProfile, updateProfile, type ProfileData } from "../lib/api"
 
 const MOCK: ProfileData = {
   full_name: "Demo User",
-  email: "demo@speakeasy.app",
+  email: "",
   joined_at: "April 2026",
   best_score: 87,
   improvement: 14,
@@ -69,8 +69,8 @@ const BADGES = [
 export default function Profile() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [data, setData] = useState<ProfileData>(MOCK)
-  const [name, setName] = useState(MOCK.full_name)
+  const [data, setData] = useState<ProfileData | null>(null)
+  const [name, setName] = useState("")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -78,7 +78,7 @@ export default function Profile() {
     if (!user) return
     getProfile(user.id)
       .then((d) => {
-        setData(d)
+        setData({ ...d, email: user?.email ?? "" })
         setName(d.full_name)
       })
       .catch(() => {})
@@ -96,6 +96,20 @@ export default function Profile() {
       setSaving(false)
     }
   }
+
+  if (!data) return (
+    <div className="min-h-screen bg-[#f5f3ff]">
+      <Navbar />
+      <div className="max-w-[760px] mx-auto px-8 py-8 flex flex-col gap-6">
+        <div className="h-8 w-40 rounded-xl bg-[#e0daf7] animate-pulse" />
+        <div className="h-28 rounded-[24px] bg-[#e0daf7] animate-pulse" />
+        <div className="grid grid-cols-3 gap-4">
+          {[0,1,2].map(i => <div key={i} className="h-24 rounded-[24px] bg-[#e0daf7] animate-pulse" />)}
+        </div>
+        <div className="h-48 rounded-[24px] bg-[#e0daf7] animate-pulse" />
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[#f5f3ff]">
