@@ -1,55 +1,133 @@
 import { useRef, useState } from "react"
 
+function encodeWav(samples: Float32Array, sampleRate: number): Blob {
+  const numSamples = samples.length
+  const buffer = new ArrayBuffer(44 + numSamples * 2)
+  const view = new DataView(buffer)
+
+  const writeStr = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+  }
+  writeStr(0, "RIFF")
+  view.setUint32(4, 36 + numSamples * 2, true)
+  writeStr(8, "WAVE")
+  writeStr(12, "fmt ")
+  view.setUint32(16, 16, true)       // PCM chunk size
+  view.setUint16(20, 1, true)        // PCM format
+  view.setUint16(22, 1, true)        // mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)  // byte rate
+  view.setUint16(32, 2, true)        // block align
+  view.setUint16(34, 16, true)       // bits per sample
+  writeStr(36, "data")
+  view.setUint32(40, numSamples * 2, true)
+
+  // float32 → int16
+  let offset = 44
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]))
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+    offset += 2
+  }
+
+  return new Blob([buffer], { type: "audio/wav" })
+}
+
 export function useRecorder() {
   const [isRecording, setIsRecording] = useState(false)
   const [blob, setBlob] = useState<Blob | null>(null)
   const [seconds, setSeconds] = useState(0)
   const [recorderError, setRecorderError] = useState("")
-  const mediaRef = useRef<MediaRecorder | null>(null)
+
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const samplesRef = useRef<Float32Array[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const chunks = useRef<Blob[]>([])
+  const streamRef = useRef<MediaStream | null>(null)
+
+  const TARGET_SR = 16000
 
   async function start() {
     setRecorderError("")
     let stream: MediaStream
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: 1,
+        },
+      })
     } catch {
       setRecorderError("Microphone access denied. Please allow mic access and try again.")
       return
     }
 
-    // Pick the best supported MIME type
-    const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"]
-      .find((t) => MediaRecorder.isTypeSupported(t)) ?? ""
+    streamRef.current = stream
+    samplesRef.current = []
 
-    let recorder: MediaRecorder
-    try {
-      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-    } catch {
-      setRecorderError("Audio recording is not supported in this browser.")
-      stream.getTracks().forEach((t) => t.stop())
-      return
+    // Use Web Audio API to capture raw PCM at native rate, then resample to 16kHz
+    const ctx = new AudioContext()
+    audioCtxRef.current = ctx
+    const source = ctx.createMediaStreamSource(stream)
+
+    // ScriptProcessorNode buffers raw float32 PCM from the mic
+    const processor = ctx.createScriptProcessor(4096, 1, 1)
+    processorRef.current = processor
+
+    processor.onaudioprocess = (e) => {
+      const chunk = e.inputBuffer.getChannelData(0)
+      samplesRef.current.push(new Float32Array(chunk))
     }
 
-    chunks.current = []
-    recorder.ondataavailable = (e) => chunks.current.push(e.data)
-    recorder.onstop = () => {
-      const b = new Blob(chunks.current, { type: mimeType || "audio/webm" })
-      setBlob(b)
-      stream.getTracks().forEach((t) => t.stop())
-    }
-    recorder.start()
-    mediaRef.current = recorder
+    source.connect(processor)
+    processor.connect(ctx.destination)
+
     setIsRecording(true)
     setSeconds(0)
     timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
   }
 
   function stop() {
-    mediaRef.current?.stop()
     if (timerRef.current) clearInterval(timerRef.current)
     setIsRecording(false)
+
+    const ctx = audioCtxRef.current
+    const processor = processorRef.current
+    const stream = streamRef.current
+
+    if (!ctx || !processor) return
+
+    processor.disconnect()
+    stream?.getTracks().forEach((t) => t.stop())
+
+    // Concatenate all PCM chunks
+    const totalLen = samplesRef.current.reduce((s, c) => s + c.length, 0)
+    const merged = new Float32Array(totalLen)
+    let offset = 0
+    for (const chunk of samplesRef.current) {
+      merged.set(chunk, offset)
+      offset += chunk.length
+    }
+
+    // Resample from ctx.sampleRate → 16000 using OfflineAudioContext
+    const offlineCtx = new OfflineAudioContext(1, Math.ceil(merged.length * TARGET_SR / ctx.sampleRate), TARGET_SR)
+    const buf = offlineCtx.createBuffer(1, merged.length, ctx.sampleRate)
+    buf.copyToChannel(merged, 0)
+    const offlineSource = offlineCtx.createBufferSource()
+    offlineSource.buffer = buf
+    offlineSource.connect(offlineCtx.destination)
+    offlineSource.start()
+
+    offlineCtx.startRendering().then((rendered) => {
+      const resampled = rendered.getChannelData(0)
+      setBlob(encodeWav(resampled, TARGET_SR))
+    })
+
+    ctx.close()
+    audioCtxRef.current = null
+    processorRef.current = null
   }
 
   function reset() {

@@ -128,6 +128,11 @@ async def assess(
     duration = len(audio_array) / 16000.0
     wav_path = save_temp_wav(audio_array)
 
+    # DEBUG: save a copy so we can hear what the browser sent
+    import shutil as _shutil, os as _os
+    _os.makedirs("backend/debug_audio", exist_ok=True)
+    _shutil.copy(wav_path, f"backend/debug_audio/{task}_{datetime.now().strftime('%H%M%S')}.wav")
+
     try:
         if transcript and word_timestamps:
             words = [TranscriptWord(**w) for w in json.loads(word_timestamps)]

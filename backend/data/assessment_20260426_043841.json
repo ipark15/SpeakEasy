@@ -1,12 +1,12 @@
 {
-  "assessed_at": "2026-04-26T00:17:32.137223+00:00",
-  "composite_score": 78.1,
+  "assessed_at": "2026-04-26T04:38:41.435512+00:00",
+  "composite_score": 82.6,
   "scores_summary": {
-    "fluency": 81.2,
+    "fluency": 87.5,
     "clarity": 100.0,
-    "prosody": 58.8,
+    "prosody": 63.8,
     "pronunciation": 92.5,
-    "rhythm": 76.0
+    "rhythm": 70.0
   },
   "tasks": [
     {
@@ -16,19 +16,19 @@
         "reference_sentence": "please call stella and ask her to bring these things with her from the store"
       },
       "scores": {
-        "overall": 93.5,
+        "overall": 91.0,
         "fluency": 75.0,
         "clarity": 100.0,
-        "prosody": 100.0,
+        "prosody": 75.0,
         "pronunciation": 95.0
       },
       "metrics": {
-        "audio_duration": 4.1,
-        "wpm": 219.7,
+        "audio_duration": 4.01,
+        "wpm": 224.4,
         "word_error_rate": 0.0,
-        "pitch_mean_hz": 120.1,
-        "pitch_std_hz": 26.8,
-        "avg_word_confidence": 0.952,
+        "pitch_mean_hz": 109.6,
+        "pitch_std_hz": 14.5,
+        "avg_word_confidence": 0.953,
         "transcript": "Please call Stella and ask her to bring these things with her from the store."
       }
     },
@@ -38,18 +38,18 @@
         "instruction": "Say \"pa-ta-ka\" 5 times clearly, at a steady pace."
       },
       "scores": {
-        "overall": 76.0,
-        "rhythm": 76.0
+        "overall": 70.0,
+        "rhythm": 70.0
       },
       "metrics": {
-        "audio_duration": 3.78,
-        "ddk_rate": 3.79,
-        "rhythm_regularity": 0.929,
-        "avg_word_confidence": 0.746,
+        "audio_duration": 5.5,
+        "ddk_rate": 6.9,
+        "rhythm_regularity": 0.647,
+        "avg_word_confidence": 0.77,
         "low_confidence_words": [
           {
             "word": "(singing",
-            "confidence": 0.462
+            "confidence": 0.474
           }
         ],
         "transcript": "(singing in foreign language)"
@@ -61,23 +61,23 @@
         "instruction": "Describe the room you are sitting in right now."
       },
       "scores": {
-        "overall": 63.8,
-        "fluency": 87.5,
-        "prosody": 17.5,
+        "overall": 80.4,
+        "fluency": 100.0,
+        "prosody": 52.5,
         "pronunciation": 90.0
       },
       "metrics": {
-        "audio_duration": 4.35,
-        "wpm": 165.4,
+        "audio_duration": 4.78,
+        "wpm": 150.7,
         "filler_count": 0,
-        "speech_rate_cv": 1.816,
-        "pitch_mean_hz": 145.1,
-        "pitch_std_hz": 89.9,
-        "avg_word_confidence": 0.905,
+        "speech_rate_cv": 1.82,
+        "pitch_mean_hz": 115.1,
+        "pitch_std_hz": 16.2,
+        "avg_word_confidence": 0.948,
         "low_confidence_words": [
           {
             "word": "Speak",
-            "confidence": 0.319
+            "confidence": 0.599
           }
         ],
         "transcript": "Speak naturally for about 20 seconds. There's no right or wrong answer."

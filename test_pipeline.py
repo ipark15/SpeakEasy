@@ -130,6 +130,11 @@ def run_task(task: dict) -> dict:
     print(f"  Recorded {duration:.1f}s — processing...\n")
 
     wav_path = save_temp_wav(audio)
+
+    import shutil as _shutil
+    os.makedirs("backend/debug_audio", exist_ok=True)
+    _shutil.copy(wav_path, f"backend/debug_audio/{task['id']}_{datetime.now().strftime('%H%M%S')}.wav")
+
     try:
         # ── Step 1: Transcription ─────────────────────────────────────────────
         print("  [1/3] Transcribing...")

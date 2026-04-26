@@ -6,18 +6,23 @@ const DIMS = [
   { key: "fluency", label: "FLUENCY", color: "#4338ca", bg: "rgba(99,102,241,0.1)" },
   { key: "clarity", label: "CLARITY", color: "#0284c7", bg: "rgba(191,219,254,0.4)" },
   { key: "rhythm", label: "RHYTHM", color: "#16a34a", bg: "rgba(167,243,208,0.4)" },
-  { key: "prosody", label: "PAUSE", color: "#ea580c", bg: "rgba(254,215,170,0.4)" },
+  { key: "prosody", label: "PROSODY", color: "#ea580c", bg: "rgba(254,215,170,0.4)" },
+  { key: "pronunciation", label: "PRONUNCIATION", color: "#7c3aed", bg: "rgba(221,214,254,0.4)" },
 ]
+
+const SCORE_KEYS = ["fluency", "clarity", "rhythm", "prosody", "pronunciation"] as const
 
 type Tab = "Feedback" | "Breakdown" | "AI Insights"
 
 function aggregateScores(session: SessionData): Record<string, number> {
   const totals: Record<string, number[]> = {}
   for (const a of session.assessments) {
-    for (const [k, v] of Object.entries(a.scores)) {
-      if (k === "overall" || v == null) continue
-      if (!totals[k]) totals[k] = []
-      totals[k].push(v as number)
+    for (const dim of SCORE_KEYS) {
+      // DB returns flat fields: score_fluency, score_clarity, etc.
+      const v = (a as Record<string, unknown>)[`score_${dim}`]
+      if (v == null) continue
+      if (!totals[dim]) totals[dim] = []
+      totals[dim].push(v as number)
     }
   }
   return Object.fromEntries(
