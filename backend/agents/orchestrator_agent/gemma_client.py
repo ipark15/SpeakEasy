@@ -177,19 +177,19 @@ Now write the report using EXACTLY these six section headers (keep brackets, wri
 ═══════════════════════════════════════════════
 
 [SUMMARY]
-2–3 sentences. Bold the composite score. Color the strongest dimension <font color="#43A047">green</font> and the weakest <font color="#E53935">red</font>. End with one specific observation from the data (e.g. actual WPM, a pause duration, or a low-confidence word).
+MAXIMUM 2 sentences. Bold the composite score. Color the strongest dim <font color="#43A047">green</font>, weakest <font color="#E53935">red</font>. One specific data point (e.g. actual WPM or a low-confidence word).
 
 [STRENGTHS]
-2–3 bullet points (• ). Bold every metric value. Color values that beat the benchmark <font color="#43A047">green</font>. Be specific — cite task scores and words they said clearly.
+EXACTLY 2 bullet points (• ). One line each. Bold every metric value. Color values above benchmark <font color="#43A047">green</font>. Cite the actual number.
 
 [WEAKNESSES]
-2–3 bullet points (• ). Bold every metric value. Color values below benchmark <font color="#E53935">red</font> if severe, <font color="#FB8C00">orange</font> if borderline. State the gap vs the normal range (e.g. "<b>WER 0.22</b> vs normal <0.10").
+EXACTLY 2 bullet points (• ). One line each. Bold every metric value. Color below-benchmark values <font color="#E53935">red</font> or <font color="#FB8C00">orange</font>. State the gap (e.g. "<b>WER 0.18</b> vs normal &lt;0.10").
 
 [RECOMMENDATIONS]
-Exactly 3 bullet points (• ). Bold the target metric and the drill phrase. Color the target range <font color="#43A047">green</font>. Each must name the specific weak metric value and what to aim for.
+EXACTLY 3 bullet points (• ). One line each. Bold the drill phrase and metric. Color the target <font color="#43A047">green</font>. Name the specific metric and target value.
 
 [NEXT_FOCUS]
-1–2 sentences. Bold the dimension name and its score. Color it <font color="#E53935">red</font>. One plain-language reason why it matters most.
+MAXIMUM 1 sentence. Bold dimension name and score in <font color="#E53935">red</font>. State why it matters most in plain language.
 """
 
 

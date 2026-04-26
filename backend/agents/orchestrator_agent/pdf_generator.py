@@ -362,9 +362,12 @@ def generate_pdf(assessment: dict, narrative: dict, output_path: str) -> str:
     if range_bytes:
         n_metrics = sum(1 for key, *_ in _RANGE_SPECS
                         if any(t.get("metrics", {}).get(key) is not None for t in tasks))
-        img_h = max(1.5, n_metrics * 0.85)
+        img_h = max(1.8, n_metrics * 1.0)
         story.append(Image(io.BytesIO(range_bytes), width=6.5*inch, height=img_h*inch))
         story.append(Spacer(1, 0.1 * inch))
+    else:
+        import logging
+        logging.getLogger(__name__).warning("range_marker_chart returned None — no matching metrics found in tasks")
 
     # ── transcript with confidence coloring ──
     story.append(Paragraph("What You Said", heading_s))
