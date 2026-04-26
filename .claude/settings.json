@@ -14,7 +14,14 @@
       "Bash(npm run *)",
       "Bash(npx tsc *)",
       "Bash(git -C /Users/isaiah/SpeakEasy add frontend/src/pages/Landing.tsx frontend/src/pages/Assess.tsx frontend/src/pages/Results.tsx)",
-      "Bash(python3)"
+      "Bash(python3)",
+      "Bash(python -c \"from backend.routers.dashboard import router; print\\('dashboard OK'\\)\")",
+      "Bash(python -c \"from backend.db.queries import get_history_data; print\\('queries OK'\\)\")",
+      "Read(//Users/isaiah/.local/share/virtualenvs/**)",
+      "Bash(pip show *)",
+      "Bash(pipenv run *)",
+      "Bash(python3 -m ast backend/routers/dashboard.py)",
+      "Bash(python3 -m ast backend/db/queries.py)"
     ]
   },
   "enabledPlugins": {
