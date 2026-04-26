@@ -1,6 +1,7 @@
 from __future__ import annotations
 import io
 import os
+import tempfile
 import uuid
 
 import numpy as np
@@ -25,7 +26,7 @@ def bytes_to_array(input_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
 
 
 def save_temp_wav(audio: np.ndarray, sr: int = 16000) -> str:
-    path = f"/tmp/speech_{uuid.uuid4().hex}.wav"
+    path = os.path.join(tempfile.gettempdir(), f"speech_{uuid.uuid4().hex}.wav")
     sf.write(path, audio, sr)
     return path
 

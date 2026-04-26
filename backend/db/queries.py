@@ -4,6 +4,21 @@ from backend.db import get_client
 from backend.models.schemas import AssessmentResponse
 
 
+def upload_audio(session_id: str, task: str, audio_bytes: bytes) -> Optional[str]:
+    """Upload audio bytes to Supabase Storage. Returns public URL or None on failure."""
+    try:
+        db = get_client()
+        path = f"{session_id}/{task}.wav"
+        db.storage.from_("audio").upload(
+            path=path,
+            file=audio_bytes,
+            file_options={"content-type": "audio/wav", "upsert": "true"},
+        )
+        return db.storage.from_("audio").get_public_url(path)
+    except Exception:
+        return None
+
+
 def create_session(user_id: str) -> str:
     """Insert a new in-progress session and return its id."""
     db = get_client()
@@ -15,7 +30,7 @@ def create_session(user_id: str) -> str:
     return result.data[0]["id"]
 
 
-def save_assessment(session_id: str, user_id: str, response: AssessmentResponse) -> str:
+def save_assessment(session_id: str, user_id: str, response: AssessmentResponse, audio_url: Optional[str] = None) -> str:
     """Persist one task's features, scores, and feedback. Returns the assessment id."""
     db = get_client()
     f = response.features
@@ -78,6 +93,9 @@ def save_assessment(session_id: str, user_id: str, response: AssessmentResponse)
         # Feedback
         "feedback": response.feedback,
         "tips": response.tips,
+
+        # Audio file
+        "audio_url": audio_url,
     }
 
     result = db.table("assessments").insert(row).execute()
@@ -173,6 +191,41 @@ def get_profile(user_id: str) -> Optional[dict]:
         .execute()
     )
     return result.data[0] if result.data else None
+
+
+# ── Reports ───────────────────────────────────────────────────
+
+def save_report(session_id: str, user_id: str, pdf_path: str, summary: str = "") -> None:
+    db = get_client()
+    db.table("reports").upsert({
+        "session_id": session_id,
+        "user_id": user_id,
+        "pdf_path": pdf_path,
+        "summary": summary,
+    }).execute()
+
+
+def get_report(session_id: str) -> Optional[dict]:
+    db = get_client()
+    result = (
+        db.table("reports")
+        .select("*")
+        .eq("session_id", session_id)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+def get_user_reports(user_id: str) -> list[dict]:
+    db = get_client()
+    return (
+        db.table("reports")
+        .select("session_id, generated_at, summary")
+        .eq("user_id", user_id)
+        .order("generated_at", desc=True)
+        .execute()
+        .data
+    )
 
 
 # ── Dashboard ─────────────────────────────────────────────────

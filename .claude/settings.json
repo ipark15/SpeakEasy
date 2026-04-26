@@ -29,7 +29,14 @@
       "Bash(curl -s http://localhost:8000/api/health)",
       "Bash(pip3 install *)",
       "Bash(python -m uvicorn backend.app:app --port 8000)",
-      "Bash(pkill -f \"uvicorn backend.app\")"
+      "Bash(pkill -f \"uvicorn backend.app\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)",
+      "Bash(git checkout *)",
+      "Bash(curl -s http://localhost:8000/api/report/acd0cfa9-1eaa-4757-8f2b-5af0fa7105d5)",
+      "Bash(python3 -m json.tool)"
     ]
   },
   "enabledPlugins": {

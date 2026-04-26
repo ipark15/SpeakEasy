@@ -34,7 +34,7 @@ const STEPS = [
 export default function Assess() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { start, stop, blob, isRecording, seconds, reset, recorderError } = useRecorder()
+  const { start, stop, blob, isRecording, seconds, reset } = useRecorder()
 
   const [step, setStep] = useState<0 | 1 | 2>(0)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -176,9 +176,9 @@ export default function Assess() {
             )}
           </div>
 
-          {(error || recorderError || sessionError) && (
+          {(error || sessionError) && (
             <p className="font-['Outfit'] text-sm text-red-500 text-center mb-4">
-              {error || recorderError || sessionError}
+              {error || sessionError}
             </p>
           )}
 

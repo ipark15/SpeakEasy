@@ -1,5 +1,7 @@
 from __future__ import annotations
+import asyncio
 import json
+from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
@@ -16,6 +18,67 @@ import backend.db.queries as db
 router = APIRouter()
 
 ALL_TASKS = {"read_sentence", "pataka", "free_speech"}
+_TASK_WEIGHTS = {"read_sentence": 0.40, "pataka": 0.20, "free_speech": 0.40}
+_ORCHESTRATOR_URL = "http://127.0.0.1:8001/submit"
+
+
+def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
+    """Convert raw DB session rows into the 3-task JSON format the orchestrator expects."""
+    assessments = session_data.get("assessments", [])
+    scores_summary: dict[str, list] = {}
+    tasks = []
+
+    for a in assessments:
+        tid = a["task"]
+        scores = {k.replace("score_", ""): v for k, v in a.items()
+                  if k.startswith("score_") and v is not None}
+        metrics: dict = {}
+        for key in ("wpm", "word_error_rate", "pause_count", "max_pause_duration",
+                    "filler_count", "speech_rate_cv", "ddk_rate", "rhythm_regularity",
+                    "pitch_mean", "pitch_std", "avg_word_confidence", "audio_duration"):
+            if a.get(key) is not None:
+                metrics[key] = a[key]
+        if tid != "pataka" and a.get("low_confidence_words"):
+            metrics["low_confidence_words"] = a["low_confidence_words"]
+        if a.get("transcript"):
+            metrics["transcript"] = a["transcript"]
+
+        tasks.append({"task_id": tid, "scores": scores, "metrics": metrics})
+        for dim, val in scores.items():
+            if dim != "overall":
+                scores_summary.setdefault(dim, []).append(val)
+
+    composite_total = composite_w = 0.0
+    for a in assessments:
+        w = _TASK_WEIGHTS.get(a["task"], 0.33)
+        if a.get("score_overall") is not None:
+            composite_total += a["score_overall"] * w
+            composite_w += w
+
+    return {
+        "session_id": session_id,
+        "assessed_at": datetime.now(timezone.utc).isoformat(),
+        "composite_score": round(composite_total / composite_w, 1) if composite_w > 0 else 0.0,
+        "scores_summary": {
+            dim: round(sum(vals) / len(vals), 1)
+            for dim, vals in scores_summary.items()
+        },
+        "tasks": tasks,
+    }
+
+
+async def _trigger_orchestrator(session_id: str, session_data: dict) -> None:
+    """Send the completed assessment to the orchestrator agent (fire-and-forget)."""
+    try:
+        import httpx
+        payload = _build_assessment_payload(session_id, session_data)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            await client.post(
+                _ORCHESTRATOR_URL,
+                json={"session_id": session_id, "assessment_json": json.dumps(payload)},
+            )
+    except Exception:
+        pass  # orchestrator is optional — don't fail the assess response
 
 
 # ── Session start ─────────────────────────────────────────────
@@ -49,6 +112,92 @@ def session_get(session_id: str):
     return data
 
 
+# ── Clinical Report PDF ───────────────────────────────────────
+
+@router.get("/report/{session_id}")
+async def generate_report(session_id: str):
+    import os
+    from fastapi import HTTPException
+    from fastapi.responses import FileResponse
+    from backend.agents.orchestrator_agent.gemma_client import generate_narrative
+    from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
+
+    data = db.get_session(session_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    if not data.get("assessments"):
+        raise HTTPException(status_code=404, detail="No assessments in this session.")
+
+    pdf_path = f"backend/reports/{session_id}.pdf"
+
+    # Serve cached PDF if it already exists
+    if os.path.exists(pdf_path):
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=f"speech_report_{session_id[:8]}.pdf",
+        )
+
+    # Build the Gemma narrative input
+    gemma_input = _build_assessment_payload(session_id, data)
+
+    # Build the pdf_generator input
+    assessments = data["assessments"]
+
+    def _avg(key: str) -> int:
+        vals = [a[key] for a in assessments if a.get(key) is not None]
+        return round(sum(vals) / len(vals)) if vals else 0
+
+    all_pauses: list = []
+    all_low_conf: list = []
+    for a in assessments:
+        all_pauses.extend(a.get("pauses") or [])
+        all_low_conf.extend(a.get("low_confidence_words") or [])
+
+    pdf_input = {
+        "user_id":    data.get("user_id", ""),
+        "session_id": session_id,
+        "scores": {
+            "fluency":       _avg("score_fluency"),
+            "clarity":       _avg("score_clarity"),
+            "rhythm":        _avg("score_rhythm"),
+            "prosody":       _avg("score_prosody"),
+            "voice_quality": _avg("score_voice_quality"),
+            "overall":       round(data.get("overall_score") or gemma_input["composite_score"]),
+        },
+        "features": {
+            "word_error_rate":   next((a["word_error_rate"]   for a in assessments if a.get("word_error_rate")   is not None), 0.0),
+            "ddk_rate":          next((a["ddk_rate"]          for a in assessments if a.get("ddk_rate")          is not None), 5.0),
+            "rhythm_regularity": next((a["rhythm_regularity"] for a in assessments if a.get("rhythm_regularity") is not None), 0.5),
+            "wpm":               next((a["wpm"]               for a in assessments if a.get("wpm")               is not None), 120),
+            "pitch_std":         next((a["pitch_std"]         for a in assessments if a.get("pitch_std")         is not None), 20.0),
+        },
+        "events": {
+            "pauses":               all_pauses,
+            "low_confidence_words": all_low_conf,
+        },
+    }
+
+    narrative = generate_narrative(gemma_input)
+
+    os.makedirs("backend/reports", exist_ok=True)
+    generate_pdf(pdf_input, narrative, pdf_path)
+
+    # Save to DB so History page can show which sessions have reports
+    db.save_report(
+        session_id=session_id,
+        user_id=data.get("user_id", ""),
+        pdf_path=pdf_path,
+        summary=narrative.get("overall_summary", ""),
+    )
+
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=f"speech_report_{session_id[:8]}.pdf",
+    )
+
+
 # ── Assess ────────────────────────────────────────────────────
 
 @router.post("/assess", response_model=AssessmentResponse)
@@ -65,12 +214,17 @@ async def assess(
     duration = len(audio_array) / 16000.0
     wav_path = save_temp_wav(audio_array)
 
+    # DEBUG: save a copy so we can hear what the browser sent
+    import shutil as _shutil, os as _os
+    _os.makedirs("backend/debug_audio", exist_ok=True)
+    _shutil.copy(wav_path, f"backend/debug_audio/{task}_{datetime.now().strftime('%H%M%S')}.wav")
+
     try:
         if transcript and word_timestamps:
             words = [TranscriptWord(**w) for w in json.loads(word_timestamps)]
             text = transcript
         else:
-            text, words = transcribe(wav_path)
+            text, words = transcribe(wav_path, task=task)
 
         pauses = fe.detect_pauses(words)
         prosody = fe.extract_prosody(wav_path)
@@ -80,21 +234,24 @@ async def assess(
         max_pause = float(max((p.duration for p in pauses), default=0.0))
 
         wpm = filler_events = filler_count = wer = None
-        speaking_ratio = None
+        acoustic_filler_count = None
+        speech_rate_cv = None
         pataka_data: dict = {}
 
         if task == "read_sentence":
             wpm = fe.calculate_wpm(words, duration)
             wer = fe.calculate_wer(fe.READ_SENTENCE, text)
-            speaking_ratio = fe.speaking_time_ratio(words, duration)
+
         elif task == "pataka":
             pataka_data = fe.analyze_pataka(audio_array)
+
         elif task == "free_speech":
             wpm = fe.calculate_wpm(words, duration)
             filler_list = fe.detect_fillers(words)
             filler_count = len(filler_list)
             filler_events = filler_list
-            speaking_ratio = fe.speaking_time_ratio(words, duration)
+            acoustic_filler_count = fe.detect_acoustic_fillers(wav_path)
+            speech_rate_cv = fe.speech_rate_variation(words)
 
         features = FeatureResult(
             transcript=text,
@@ -106,8 +263,9 @@ async def assess(
             max_pause_duration=max_pause,
             wpm=wpm,
             filler_count=filler_count,
+            acoustic_filler_count=acoustic_filler_count,
             filler_words=filler_events,
-            speaking_time_ratio=speaking_ratio,
+            speech_rate_cv=speech_rate_cv,
             word_error_rate=wer,
             syllable_intervals=pataka_data.get("syllable_intervals"),
             rhythm_regularity=pataka_data.get("rhythm_regularity"),
@@ -131,7 +289,8 @@ async def assess(
         # Persist to DB if session context provided
         assessment_id = None
         if user_id and session_id:
-            assessment_id = db.save_assessment(session_id, user_id, response)
+            audio_url = db.upload_audio(session_id, task, audio_bytes)
+            assessment_id = db.save_assessment(session_id, user_id, response, audio_url=audio_url)
             response.assessment_id = assessment_id
 
             # Mark session complete when all 3 tasks have been saved
@@ -142,9 +301,108 @@ async def assess(
                     a["score_overall"] for a in session_data["assessments"]
                     if a.get("score_overall") is not None
                 ]
-                overall = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0.0
+                total = weight_sum = 0.0
+                for a in session_data["assessments"]:
+                    w = _TASK_WEIGHTS.get(a["task"], 0.33)
+                    if a.get("score_overall") is not None:
+                        total += a["score_overall"] * w
+                        weight_sum += w
+                overall = round(total / weight_sum, 1) if weight_sum > 0 else 0.0
                 db.complete_session(session_id, overall)
 
+                # Fire-and-forget: send assessment to orchestrator agent
+                asyncio.create_task(_trigger_orchestrator(session_id, session_data))
+
         return response
+    finally:
+        cleanup_temp(wav_path)
+
+
+# ── Drill assess ──────────────────────────────────────────────
+# Single free-speech recording scored across all 5 dimensions.
+# Used by coach agents to evaluate user's drill performance.
+
+class DrillScoreResponse(BaseModel):
+    scores: dict
+    transcript: str
+    audio_duration: float
+
+
+@router.post("/assess_drill", response_model=DrillScoreResponse)
+async def assess_drill(
+    audio: UploadFile = File(...),
+    reference_phrase: Optional[str] = Form(None),  # phrase the coach gave — used for WER
+    transcript: Optional[str] = Form(None),
+    word_timestamps: Optional[str] = Form(None),
+):
+    audio_bytes = await audio.read()
+    audio_array = bytes_to_array(audio_bytes)
+    duration = len(audio_array) / 16000.0
+    wav_path = save_temp_wav(audio_array)
+
+    try:
+        if transcript and word_timestamps:
+            words = [TranscriptWord(**w) for w in json.loads(word_timestamps)]
+            text = transcript
+        else:
+            text, words = transcribe(wav_path, task="free_speech")
+
+        pauses = fe.detect_pauses(words)
+        prosody = fe.extract_prosody(wav_path)
+        pronunciation = fe.extract_pronunciation(words)
+
+        avg_pause = float(np.mean([p.duration for p in pauses])) if pauses else 0.0
+        max_pause = float(max((p.duration for p in pauses), default=0.0))
+
+        wpm = fe.calculate_wpm(words, duration)
+        filler_list = fe.detect_fillers(words)
+        filler_count = len(filler_list)
+        acoustic_filler_count = fe.detect_acoustic_fillers(wav_path)
+        speech_rate_cv = fe.speech_rate_variation(words)
+        pataka_data = fe.analyze_pataka(audio_array)
+
+        # WER against coach-provided phrase if given, else None
+        wer = fe.calculate_wer(reference_phrase, text) if reference_phrase else None
+
+        features = FeatureResult(
+            transcript=text,
+            word_timestamps=words,
+            audio_duration=duration,
+            pauses=pauses,
+            pause_count=len(pauses),
+            avg_pause_duration=avg_pause,
+            max_pause_duration=max_pause,
+            wpm=wpm,
+            filler_count=filler_count,
+            acoustic_filler_count=acoustic_filler_count,
+            filler_words=filler_list,
+            speech_rate_cv=speech_rate_cv,
+            word_error_rate=wer,
+            syllable_intervals=pataka_data.get("syllable_intervals"),
+            rhythm_regularity=pataka_data.get("rhythm_regularity"),
+            ddk_rate=pataka_data.get("ddk_rate"),
+            **prosody,
+            **pronunciation,
+        )
+
+        # Score all 5 dimensions — each uses whatever features are available
+        from backend.services.scoring import (
+            score_fluency, score_clarity, score_rhythm, score_prosody, score_pronunciation
+        )
+        scores = {
+            "fluency":       score_fluency(features, is_read_sentence=False),
+            "clarity":       score_clarity(features) if wer is not None else None,
+            "rhythm":        score_rhythm(features),
+            "prosody":       score_prosody(features, weight_cv=True),
+            "pronunciation": score_pronunciation(features),
+        }
+        # Strip None values
+        scores = {k: v for k, v in scores.items() if v is not None}
+
+        return DrillScoreResponse(
+            scores=scores,
+            transcript=text,
+            audio_duration=duration,
+        )
     finally:
         cleanup_temp(wav_path)

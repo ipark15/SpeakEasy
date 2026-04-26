@@ -83,3 +83,7 @@ htmlcov/
 *.log
 *.sqlite
 *.db
+
+# ── Generated Reports ──────────────────────────────────────────────────────────
+backend/reports/*.pdf
+reports/*.pdf

@@ -15,6 +15,13 @@ router = APIRouter()
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
+# ── Reports list ──────────────────────────────────────────────
+
+@router.get("/reports/{user_id}")
+def list_reports(user_id: str):
+    return db.get_user_reports(user_id)
+
+
 # ── Dashboard ─────────────────────────────────────────────────
 
 @router.get("/dashboard/{user_id}")

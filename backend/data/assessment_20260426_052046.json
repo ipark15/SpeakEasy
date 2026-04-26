@@ -1,0 +1,81 @@
+{
+  "assessed_at": "2026-04-26T05:20:46.067737+00:00",
+  "composite_score": 89.9,
+  "scores_summary": {
+    "fluency": 81.2,
+    "clarity": 100.0,
+    "prosody": 87.5,
+    "pronunciation": 95.0,
+    "rhythm": 88.0
+  },
+  "tasks": [
+    {
+      "task_id": "read_sentence",
+      "metadata": {
+        "instruction": "Read the following sentence clearly at a natural pace:\n\n  \"Please call Stella and ask her to bring these things\n   with her from the store.\"",
+        "reference_sentence": "please call stella and ask her to bring these things with her from the store"
+      },
+      "scores": {
+        "overall": 92.5,
+        "fluency": 62.5,
+        "clarity": 100.0,
+        "prosody": 100.0,
+        "pronunciation": 100.0
+      },
+      "metrics": {
+        "audio_duration": 3.61,
+        "wpm": 249.6,
+        "word_error_rate": 0.0,
+        "pitch_mean_hz": 109.6,
+        "pitch_std_hz": 17.9,
+        "avg_word_confidence": 0.952,
+        "transcript": "Please call Stella and ask her to bring these things with her from the store."
+      }
+    },
+    {
+      "task_id": "pataka",
+      "metadata": {
+        "instruction": "Say \"pa-ta-ka\" 5 times clearly, at a steady pace."
+      },
+      "scores": {
+        "overall": 88.0,
+        "rhythm": 88.0
+      },
+      "metrics": {
+        "audio_duration": 4.2,
+        "ddk_rate": 4.63,
+        "rhythm_regularity": 0.948,
+        "avg_word_confidence": 0.85,
+        "transcript": "Paa taa taa taa taa taa taa taa taa taa taa taa taa taa."
+      }
+    },
+    {
+      "task_id": "free_speech",
+      "metadata": {
+        "instruction": "Describe the room you are sitting in right now."
+      },
+      "scores": {
+        "overall": 88.2,
+        "fluency": 100.0,
+        "prosody": 75.0,
+        "pronunciation": 90.0
+      },
+      "metrics": {
+        "audio_duration": 4.59,
+        "wpm": 157.0,
+        "filler_count": 0,
+        "speech_rate_cv": 0.652,
+        "pitch_mean_hz": 122.9,
+        "pitch_std_hz": 19.9,
+        "avg_word_confidence": 0.915,
+        "low_confidence_words": [
+          {
+            "word": "Speak",
+            "confidence": 0.187
+          }
+        ],
+        "transcript": "Speak naturally for about 20 seconds. There's no right or wrong answer."
+      }
+    }
+  ]
+}

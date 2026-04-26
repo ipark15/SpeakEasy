@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { getSession, type SessionData } from "../lib/api"
+import { getSession, downloadReport, type SessionData } from "../lib/api"
 
 const TASK_LABELS: Record<string, string> = {
   read_sentence: "Reading Exercise",
@@ -9,55 +9,26 @@ const TASK_LABELS: Record<string, string> = {
 }
 
 const DIMS = [
-  { key: "fluency",       label: "FLUENCY",      color: "#4338ca" },
-  { key: "rhythm",        label: "RHYTHM",       color: "#0d9488" },
-  { key: "clarity",       label: "CLARITY",      color: "#d97706" },
-  { key: "pronunciation", label: "PRONOUNCIATION",  color: "#7c3aed" },
-  { key: "prosody",       label: "PAUSE",        color: "#16a34a" },
+  { key: "fluency", label: "FLUENCY", color: "#4338ca", bg: "rgba(99,102,241,0.1)" },
+  { key: "clarity", label: "CLARITY", color: "#0284c7", bg: "rgba(191,219,254,0.4)" },
+  { key: "rhythm", label: "RHYTHM", color: "#16a34a", bg: "rgba(167,243,208,0.4)" },
+  { key: "prosody", label: "PROSODY", color: "#ea580c", bg: "rgba(254,215,170,0.4)" },
+  { key: "pronunciation", label: "PRONUNCIATION", color: "#7c3aed", bg: "rgba(221,214,254,0.4)" },
 ]
 
-function scoreLabel(v: number) {
-  return v >= 85 ? "Excellent" : v >= 70 ? "Good" : v >= 55 ? "Fair" : "Needs Work"
-}
+const SCORE_KEYS = ["fluency", "clarity", "rhythm", "prosody", "pronunciation"] as const
 
-function scoreColor(v: number) {
-  if (v >= 85) return "#16a34a"  // green
-  if (v >= 70) return "#65a30d"  // lime
-  if (v >= 55) return "#d97706"  // amber
-  if (v >= 40) return "#ea580c"  // orange
-  return "#dc2626"               // red
-}
-
-function heroText(score: number): { heading: string; subtitle: string } {
-  if (score >= 85) return {
-    heading: "Excellent work!",
-    subtitle: "Outstanding performance across all speech dimensions.",
-  }
-  if (score >= 70) return {
-    heading: "Great effort!",
-    subtitle: "You're showing strong speech skills — a few areas just need a little polish.",
-  }
-  if (score >= 55) return {
-    heading: "Good progress.",
-    subtitle: "Solid foundation here. Targeted practice on the areas below will take you further.",
-  }
-  if (score >= 40) return {
-    heading: "Keep at it.",
-    subtitle: "There's real potential. Focus on the suggestions below to build consistency.",
-  }
-  return {
-    heading: "Let's build from here.",
-    subtitle: "Every speaker starts somewhere. Use these insights to guide your next session.",
-  }
-}
+type Tab = "Feedback" | "Breakdown" | "AI Insights"
 
 function aggregateScores(session: SessionData): Record<string, number> {
   const totals: Record<string, number[]> = {}
   for (const a of session.assessments) {
-    for (const [k, v] of Object.entries(a.scores)) {
-      if (k === "overall" || v == null) continue
-      if (!totals[k]) totals[k] = []
-      totals[k].push(v as number)
+    for (const dim of SCORE_KEYS) {
+      // DB returns flat fields: score_fluency, score_clarity, etc.
+      const v = (a as Record<string, unknown>)[`score_${dim}`]
+      if (v == null) continue
+      if (!totals[dim]) totals[dim] = []
+      totals[dim].push(v as number)
     }
   }
   return Object.fromEntries(
@@ -170,6 +141,15 @@ export default function Results() {
   const navigate = useNavigate()
   const [session, setSession] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState<Tab>("Feedback")
+  const [generatingReport, setGeneratingReport] = useState(false)
+
+  async function handleDownloadReport() {
+    if (!sessionId) return
+    setGeneratingReport(true)
+    try { await downloadReport(sessionId) } catch {}
+    finally { setGeneratingReport(false) }
+  }
 
   useEffect(() => {
     if (!sessionId) return
@@ -209,25 +189,25 @@ export default function Results() {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9896b0" strokeWidth="2">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
           </svg>
-          <div>
-            <p className="text-[9px] font-bold tracking-[1.5px] text-[#9896b0] uppercase leading-none mb-0.5">Results</p>
-            <p className="text-[15px] font-bold text-[#1e1b4b] leading-none">Analysis Complete</p>
-          </div>
-        </div>
+          Try Again
+        </button>
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate("/assess")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold text-[#4338ca] border border-[#4338ca] hover:bg-[#f0eeff] transition-colors">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/>
+          <button
+            onClick={handleDownloadReport}
+            disabled={generatingReport}
+            className="flex items-center gap-2 font-['Outfit'] font-bold text-[13px] h-[38px] px-4 rounded-[12px] cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
+            style={{ background: "rgba(67,56,202,0.08)", color: "#4338ca" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Try Again
+            {generatingReport ? "Generating…" : "Clinical Report"}
           </button>
           <button onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-[10px] text-[12px] font-semibold text-white bg-[#4338ca] hover:bg-[#3730a3] transition-colors">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
+            className="bg-[#4338ca] text-white font-['Outfit'] font-bold text-[13px] h-[38px] px-5 rounded-[12px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+            style={{ boxShadow: "0px 4px 8px rgba(67,56,202,0.28)" }}>
             Dashboard
           </button>
         </div>
@@ -316,7 +296,46 @@ export default function Results() {
                   <span key={key} className="flex-1 text-[8px] text-[#9896b0] text-center leading-tight">{label}</span>
                 ))}
               </div>
-            </div>
+            )}
+
+            {tab === "AI Insights" && (
+              <div className="flex flex-col gap-5">
+                <div className="text-center py-6">
+                  <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">AI coaching is ready</p>
+                  <p className="font-['Outfit'] font-normal text-[14px] text-[#6b6b8a] mb-6 max-w-sm mx-auto">
+                    Pick a specialized AI coach to work on your specific areas of improvement.
+                  </p>
+                  <button onClick={() => navigate("/coach")}
+                    className="bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+                    style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
+                    Choose a Coach
+                  </button>
+                </div>
+                <div className="rounded-[20px] p-6 flex items-center justify-between gap-6"
+                  style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}>
+                  <div>
+                    <p className="font-['Outfit'] font-bold text-[11px] text-[#9896b0] tracking-[1.1px] uppercase mb-1">For your clinician</p>
+                    <p className="font-['DM_Serif_Display'] text-[20px] text-[#1e1b4b] mb-1">Clinical Report</p>
+                    <p className="font-['Outfit'] font-normal text-[13px] text-[#6b6b8a]">
+                      AI-generated PDF with scores, charts, and SLP-ready narrative. Takes ~15 seconds.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={generatingReport}
+                    className="shrink-0 flex items-center gap-2 h-[46px] px-6 rounded-[14px] font-['Outfit'] font-semibold text-[14px] text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
+                    style={{ background: "#4338ca", boxShadow: "0px 4px 10px rgba(67,56,202,0.28)" }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {generatingReport ? "Generating…" : "Download PDF"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
