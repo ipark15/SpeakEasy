@@ -1,45 +1,72 @@
-# SpeakEasy (SpeechScore)
+# SpeakEasy
 
-An AI-powered speech assessment app that records short speech samples and generates objective, interpretable metrics on speech quality — fluency, clarity, rhythm, and pacing.
-
-## Overview
-
-SpeakEasy transforms raw audio into structured features and produces visual insights + actionable feedback. It is not a diagnostic tool, but a quantitative speech assessment platform for education, accessibility, and communication skills.
+AI-powered speech assessment + coaching platform. Three short tasks (~45s total) produce a scored profile across 5 dimensions, then route the user to specialized AI therapy agents for interactive coaching.
 
 ## Assessment Tasks
 
-1. **Read aloud** (~10s) — articulation, clarity, voice quality
-2. **Pa-ta-ka** (~8s) — rhythm regularity, DDK rate
-3. **Free speech** (~20s) — fluency, filler words, prosody
+| Task | What it measures |
+|---|---|
+| **Read Aloud** (~10s) | Clarity (WER), Pronunciation (confidence), Fluency (WPM, pauses), Prosody (pitch) |
+| **Pa-ta-ka** (~8s) | Rhythm (DDK rate, regularity) |
+| **Free Speech** (~20s) | Fluency (WPM, fillers, pauses), Prosody (pitch + rate variation), Pronunciation (confidence) |
+
+## Score Dimensions → Coaching Agents
+
+| Dimension | Source | Agent |
+|---|---|---|
+| **Fluency** | WPM + filler rate + pause rate | Fluency Coach |
+| **Clarity** | Word Error Rate vs reference sentence | Clarity Coach |
+| **Rhythm** | DDK rate + inter-syllable regularity | Rhythm Coach |
+| **Prosody** | Pitch std + speech rate CV | Prosody Coach |
+| **Pronunciation** | Per-word Whisper confidence (+ WER blend on read_sentence) | Pronunciation Coach |
+
+## Scoring Weights Per Task
+
+| Task | Weights |
+|---|---|
+| read_sentence | clarity 40%, pronunciation 30%, fluency 20%, prosody 10% |
+| pataka | rhythm 100% |
+| free_speech | fluency 35%, prosody 35%, pronunciation 30% |
 
 ## Tech Stack
 
-| Layer | Tool |
-|---|---|
-| Frontend | React + Tailwind + Recharts |
-| Backend | Python + FastAPI |
-| ASR | faster-whisper (`base.en`) |
-| Audio Features | parselmouth (Praat), librosa |
-| Pronunciation | HuBERT embeddings |
-| LLM Feedback | Gemma (`gemma-2-9b-it`) via Google AI Studio |
-| Agents | ASI:One Agentverse (uAgents) |
-| Database | Supabase |
-| TTS | ElevenLabs |
+| Layer | Tool | Role |
+|---|---|---|
+| Frontend | React + Tailwind + Recharts | UI, recording, visualization |
+| Backend | Python + FastAPI | Pipeline orchestration, API |
+| Transcription (fast) | whisper.cpp `tiny.en` via Metal | Transcript + word timestamps |
+| Transcription (confidence) | faster-whisper `tiny.en` CPU | Per-word confidence scores |
+| Pitch / Voice | parselmouth (Praat) | F0 pitch, jitter, shimmer, HNR |
+| Rhythm | librosa | Pa-ta-ka onset detection |
+| LLM Feedback | Gemma `gemma-2-9b-it` via Google AI Studio | Per-task feedback + coaching |
+| Agents | ASI:One Agentverse (uAgents) | 5 specialist coaching agents |
+| Database | Supabase | Sessions, scores, chat history |
+| TTS | ElevenLabs | Reads coach messages aloud |
 
 ## Setup
 
 ```bash
-cp .env.example .env
-# Fill in your API keys in .env
+brew install ffmpeg whisper-cpp
+pip install -r requirements.txt
+cp .env.example .env   # fill in API keys
+python main.py
 ```
 
-**Required keys:**
-- `GEMMA_API_KEY` — Google AI Studio
-- `ELEVENLABS_API_KEY` — ElevenLabs
-- `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_KEY` — Supabase anon/service key
+**Required `.env` keys:**
+```
+GEMMA_API_KEY=...        # Google AI Studio
+ELEVENLABS_API_KEY=...   # ElevenLabs
+SUPABASE_URL=...         # Supabase project URL
+SUPABASE_KEY=...         # Supabase anon key
+```
 
-**System dependency:**
+## Terminal Test (no frontend needed)
+
 ```bash
-brew install ffmpeg
+.venv/bin/python test_pipeline.py
 ```
+
+## API
+
+- `POST /api/assess` — one call per task, returns scores + features
+- `GET /api/health` — smoke test

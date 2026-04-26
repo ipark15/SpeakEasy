@@ -60,7 +60,7 @@ async def assess(
             words = [TranscriptWord(**w) for w in json.loads(word_timestamps)]
             text = transcript
         else:
-            text, words = transcribe(wav_path)
+            text, words = transcribe(wav_path, task=task)
 
         pauses = fe.detect_pauses(words)
         prosody = fe.extract_prosody(wav_path)
@@ -70,21 +70,24 @@ async def assess(
         max_pause = float(max((p.duration for p in pauses), default=0.0))
 
         wpm = filler_events = filler_count = wer = None
-        speaking_ratio = None
+        acoustic_filler_count = None
+        speech_rate_cv = None
         pataka_data: dict = {}
 
         if task == "read_sentence":
             wpm = fe.calculate_wpm(words, duration)
             wer = fe.calculate_wer(fe.READ_SENTENCE, text)
-            speaking_ratio = fe.speaking_time_ratio(words, duration)
+
         elif task == "pataka":
             pataka_data = fe.analyze_pataka(audio_array)
+
         elif task == "free_speech":
             wpm = fe.calculate_wpm(words, duration)
             filler_list = fe.detect_fillers(words)
             filler_count = len(filler_list)
             filler_events = filler_list
-            speaking_ratio = fe.speaking_time_ratio(words, duration)
+            acoustic_filler_count = fe.detect_acoustic_fillers(wav_path)
+            speech_rate_cv = fe.speech_rate_variation(words)
 
         features = FeatureResult(
             transcript=text,
@@ -96,8 +99,9 @@ async def assess(
             max_pause_duration=max_pause,
             wpm=wpm,
             filler_count=filler_count,
+            acoustic_filler_count=acoustic_filler_count,
             filler_words=filler_events,
-            speaking_time_ratio=speaking_ratio,
+            speech_rate_cv=speech_rate_cv,
             word_error_rate=wer,
             syllable_intervals=pataka_data.get("syllable_intervals"),
             rhythm_regularity=pataka_data.get("rhythm_regularity"),

@@ -33,9 +33,11 @@ class FeatureResult(BaseModel):
 
     # Fluency (free_speech + read_sentence)
     wpm: Optional[float] = None
-    filler_count: Optional[int] = None
+    filler_count: Optional[int] = None           # from Whisper transcript
+    acoustic_filler_count: Optional[int] = None  # from parselmouth acoustic analysis
     filler_words: Optional[List[FillerEvent]] = None
     speaking_time_ratio: Optional[float] = None
+    speech_rate_cv: Optional[float] = None       # coefficient of variation of speaking rate
 
     # Clarity (read_sentence)
     word_error_rate: Optional[float] = None
