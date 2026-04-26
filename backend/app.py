@@ -28,9 +28,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 from backend.routers import assess
 from backend.routers import dashboard
+from backend.routers import therapist
 
 app.include_router(assess.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(therapist.router, prefix="/api")
 
 
 @app.get("/api/health")
