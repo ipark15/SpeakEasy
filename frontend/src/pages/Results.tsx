@@ -478,6 +478,31 @@ export default function Results() {
           )}
         </div>
 
+        {/* Therapist CTA */}
+        <div className="rounded-[24px] p-6 sp-card">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-bold tracking-[1.5px] text-[#9896b0] uppercase mb-0.5">AI Therapist</p>
+              <p className="text-[16px] font-bold text-[#1e1b4b]" style={{ fontFamily: "'DM Serif Display', serif" }}>Talk to Alex</p>
+              <p className="text-[12px] text-[#6b6b8a]">Voice session personalized to your results</p>
+            </div>
+            <button
+              onClick={() => navigate(`/therapist/${sessionId}`)}
+              className="shrink-0 h-[40px] px-5 rounded-[12px] text-white font-['Outfit'] font-semibold text-[13px] cursor-pointer hover:opacity-90 transition-opacity"
+              style={{ background: "#4338ca", boxShadow: "0px 4px 10px rgba(67,56,202,0.28)" }}
+            >
+              Start
+            </button>
+          </div>
+        </div>
+
         {/* Bottom CTAs */}
         <div className="grid grid-cols-2 gap-3 pb-8">
           <button onClick={() => navigate("/assess")}

@@ -11,6 +11,7 @@ import History from "./pages/History"
 import Profile from "./pages/Profile"
 import Settings from "./pages/Settings"
 import DataPrivacy from "./pages/DataPrivacy"
+import TherapistSession from "./pages/TherapistSession"
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -33,6 +34,8 @@ export default function App() {
         <Route path="/profile" element={<Guard><Profile /></Guard>} />
         <Route path="/settings" element={<Guard><Settings /></Guard>} />
         <Route path="/settings/data" element={<Guard><DataPrivacy /></Guard>} />
+        <Route path="/therapist/:sessionId" element={<Guard><TherapistSession /></Guard>} />
+        <Route path="/therapist" element={<Guard><TherapistSession /></Guard>} />
       </Routes>
     </BrowserRouter>
   )
