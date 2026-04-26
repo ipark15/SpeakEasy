@@ -7,12 +7,11 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 _SECTION_TAGS = [
-    ("[SUMMARY]",           "overall_summary"),
-    ("[STRENGTHS]",         "strengths"),
-    ("[WEAKNESSES]",        "weaknesses"),
-    ("[STRUGGLED_MOMENTS]", "struggled_moments"),
-    ("[RECOMMENDATIONS]",   "recommendations"),
-    ("[NEXT_FOCUS]",        "next_focus"),
+    ("[SUMMARY]",        "overall_summary"),
+    ("[STRENGTHS]",      "strengths"),
+    ("[WEAKNESSES]",     "weaknesses"),
+    ("[RECOMMENDATIONS]","recommendations"),
+    ("[NEXT_FOCUS]",     "next_focus"),
 ]
 
 # Clinical benchmarks shown to Gemma so it can interpret raw numbers
@@ -185,9 +184,6 @@ Now write the report using EXACTLY these six section headers (keep brackets, wri
 
 [WEAKNESSES]
 2–3 bullet points (• ). Bold every metric value. Color values below benchmark <font color="#E53935">red</font> if severe, <font color="#FB8C00">orange</font> if borderline. State the gap vs the normal range (e.g. "<b>WER 0.22</b> vs normal <0.10").
-
-[STRUGGLED_MOMENTS]
-2–4 sentences. Wrap each low-confidence word in <font color="#E53935"><b>word</b></font>. Bold the longest pause duration. Explain in plain language what the pattern suggests (e.g. difficulty with consonant clusters, word-finding hesitation).
 
 [RECOMMENDATIONS]
 Exactly 3 bullet points (• ). Bold the target metric and the drill phrase. Color the target range <font color="#43A047">green</font>. Each must name the specific weak metric value and what to aim for.
