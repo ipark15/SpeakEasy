@@ -144,6 +144,25 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         "history": history,
     }
 
+    # Always save prompt to file for debugging / teammate handoff
+    try:
+        from backend.agents.therapist_agent.prompt_builder import build_system_prompt, build_first_message
+        system_prompt = build_system_prompt(new_assessment, history)
+        first_message = build_first_message(new_assessment)
+        os.makedirs("backend/debug", exist_ok=True)
+        with open("backend/debug/therapist_prompt.txt", "w") as f:
+            f.write("=" * 60 + "\n")
+            f.write(f"Session: {session_id}\n")
+            f.write(f"Generated: {datetime.now(timezone.utc).isoformat()}\n")
+            f.write("=" * 60 + "\n\n")
+            f.write("── FIRST MESSAGE ──\n\n")
+            f.write(first_message + "\n\n")
+            f.write("── SYSTEM PROMPT ──\n\n")
+            f.write(system_prompt + "\n")
+        ctx.logger.info("Therapist prompt saved to backend/debug/therapist_prompt.txt")
+    except Exception as exc:
+        ctx.logger.warning(f"Could not save therapist prompt: {exc}")
+
     if THERAPIST_AGENT_ADDRESS:
         await ctx.send(THERAPIST_AGENT_ADDRESS, ChatMessage(
             timestamp=datetime.now(timezone.utc),
@@ -152,7 +171,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         ))
         ctx.logger.info(f"Forwarded to therapist at {THERAPIST_AGENT_ADDRESS[:30]}...")
     else:
-        ctx.logger.warning("THERAPIST_AGENT_ADDRESS not set — context not forwarded")
+        ctx.logger.warning("THERAPIST_AGENT_ADDRESS not set — prompt saved locally, not forwarded")
 
 
 @protocol.on_message(ChatAcknowledgement)

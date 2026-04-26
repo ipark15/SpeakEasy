@@ -18,16 +18,7 @@ from backend.agents.orchestrator_agent.pdf_generator import generate_pdf
 
 load_dotenv()
 
-# ── Coach agent addresses (fill in after deploying each to Agentverse) ──────
-COACH_ADDRESSES = {
-    "fluency":       os.getenv("FLUENCY_AGENT_ADDRESS", ""),
-    "clarity":       os.getenv("CLARITY_AGENT_ADDRESS", ""),
-    "rhythm":        os.getenv("RHYTHM_AGENT_ADDRESS", ""),
-    "prosody":       os.getenv("PROSODY_AGENT_ADDRESS", ""),
-    "pronunciation": os.getenv("PRONUNCIATION_AGENT_ADDRESS", ""),
-}
-
-GOOD_SCORE_THRESHOLD = 90.0  # all dimensions above this → skip coaching
+PROGRESS_TRACKER_ADDRESS = os.getenv("PROGRESS_TRACKER_ADDRESS", "")
 
 agent = Agent(
     name="report_generator",
@@ -50,53 +41,6 @@ def _scores_from_payload(assessment: dict) -> dict[str, float]:
     return {k: v for k, v in s.items() if k != "overall" and v is not None}
 
 
-def _coaches_needed(scores: dict[str, float]) -> list[tuple[str, float]]:
-    """Return (dimension, score) pairs below threshold, sorted worst first."""
-    low = [(dim, score) for dim, score in scores.items() if score < GOOD_SCORE_THRESHOLD]
-    return sorted(low, key=lambda x: x[1])
-
-
-def _build_coach_context(dimension: str, score: float, assessment: dict) -> str:
-    """Build the opening message sent to a coach agent."""
-    scores_summary = _scores_from_payload(assessment)
-    composite = assessment.get("composite_score", assessment.get("scores", {}).get("overall", "N/A"))
-
-    # Pull relevant metrics for this dimension from tasks
-    metrics_lines = []
-    for task in assessment.get("tasks", []):
-        m = task.get("metrics", {})
-        if dimension == "fluency" and m.get("wpm"):
-            metrics_lines.append(f"WPM: {m['wpm']} (task: {task['task_id']})")
-        if dimension == "fluency" and m.get("filler_count"):
-            metrics_lines.append(f"Filler words: {m['filler_count']}")
-        if dimension == "clarity" and m.get("word_error_rate") is not None:
-            metrics_lines.append(f"Word error rate: {m['word_error_rate']:.1%}")
-        if dimension == "rhythm" and m.get("ddk_rate"):
-            metrics_lines.append(f"DDK rate: {m['ddk_rate']} syl/sec (normal: 5–7)")
-            metrics_lines.append(f"Rhythm regularity: {m.get('rhythm_regularity', 'N/A')}")
-        if dimension == "prosody" and m.get("pitch_std_hz"):
-            metrics_lines.append(f"Pitch variation: {m['pitch_std_hz']} Hz std (expressive: 20–55 Hz)")
-        if dimension == "pronunciation" and m.get("avg_word_confidence"):
-            metrics_lines.append(f"Word confidence: {m['avg_word_confidence']:.1%}")
-        if dimension == "pronunciation" and m.get("low_confidence_words"):
-            words = [w["word"] for w in m["low_confidence_words"][:5]]
-            metrics_lines.append(f"Low-confidence words: {words}")
-
-    metrics_block = "\n".join(metrics_lines) if metrics_lines else "No detailed metrics available."
-
-    return f"""New user needs coaching. Here are their assessment results:
-
-Composite score: {composite}/100
-All dimension scores: {json.dumps(scores_summary, indent=2)}
-
-This user scored {score}/100 on {dimension.upper()} — this is why you were activated.
-
-Relevant metrics for {dimension}:
-{metrics_block}
-
-Please introduce yourself as their {dimension.capitalize()} Coach and give them one specific
-drill phrase or exercise to try right now. Keep it warm, encouraging, and under 100 words.
-End with the exact phrase or sentence you want them to say aloud."""
 
 @protocol.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
@@ -140,40 +84,21 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         generate_pdf(pdf_input, narrative, f"backend/reports/{session_id}.pdf")
         ctx.logger.info(f"PDF saved: backend/reports/{session_id}.pdf")
 
-        # ── Check if coaching is needed ───────────────────────
-        scores = _scores_from_payload(assessment)
-        coaches_needed = _coaches_needed(scores)
-
-        if not coaches_needed:
-            ctx.logger.info("All scores above 90 — no coaching needed.")
-            response_text = (
-                f"Excellent work! All your scores are above 90/100. "
-                f"{narrative.get('overall_summary', '')} "
-                f"Your PDF report has been saved."
-            )
+        # ── Forward to progress tracker ───────────────────────
+        if PROGRESS_TRACKER_ADDRESS:
+            await ctx.send(PROGRESS_TRACKER_ADDRESS, ChatMessage(
+                timestamp=datetime.utcnow(),
+                msg_id=uuid4(),
+                content=[TextContent(type="text", text=json.dumps(assessment))],
+            ))
+            ctx.logger.info(f"Forwarded to progress tracker at {PROGRESS_TRACKER_ADDRESS[:30]}...")
         else:
-            dims = [d for d, _ in coaches_needed]
-            ctx.logger.info(f"Activating coaches for: {dims}")
+            ctx.logger.warning("PROGRESS_TRACKER_ADDRESS not set — skipping progress tracker")
 
-            # Message each needed coach agent
-            for dimension, score in coaches_needed:
-                address = COACH_ADDRESSES.get(dimension, "")
-                if not address:
-                    ctx.logger.warning(f"No address for {dimension} coach — skipping")
-                    continue
-                coach_msg = _build_coach_context(dimension, score, assessment)
-                await ctx.send(address, ChatMessage(
-                    timestamp=datetime.utcnow(),
-                    msg_id=uuid4(),
-                    content=[TextContent(type="text", text=coach_msg)],
-                ))
-                ctx.logger.info(f"Sent to {dimension} coach at {address[:30]}...")
-
-            response_text = (
-                f"{narrative.get('overall_summary', '')}\n\n"
-                f"Activating coaches for: {', '.join(dims)}. "
-                f"Your PDF report has been saved."
-            )
+        response_text = (
+            f"{narrative.get('overall_summary', '')} "
+            f"Your PDF report has been saved."
+        )
 
     except json.JSONDecodeError:
         ctx.logger.error("Could not parse assessment JSON")
