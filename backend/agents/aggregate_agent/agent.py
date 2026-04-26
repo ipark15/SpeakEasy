@@ -177,10 +177,11 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     ctx.logger.info("Aggregate JSON updated")
 
     if THERAPIST_AGENT_ADDRESS:
+        therapist_payload = {"assessment": aggregate, "history": {}}
         await ctx.send(THERAPIST_AGENT_ADDRESS, ChatMessage(
             timestamp=datetime.now(timezone.utc),
             msg_id=uuid4(),
-            content=[TextContent(type="text", text=json.dumps(aggregate))],
+            content=[TextContent(type="text", text=json.dumps(therapist_payload))],
         ))
         ctx.logger.info(f"Forwarded aggregate to therapist at {THERAPIST_AGENT_ADDRESS[:30]}...")
     else:

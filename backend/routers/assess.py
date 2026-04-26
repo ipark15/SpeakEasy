@@ -22,6 +22,7 @@ _TASK_WEIGHTS = {"read_sentence": 0.40, "pataka": 0.20, "free_speech": 0.40}
 
 import os as _os
 _ASSESSMENT_AGENT_ADDRESS = _os.getenv("ASSESSMENT_AGENT_ADDRESS", "")
+_AGGREGATE_AGENT_ADDRESS = _os.getenv("AGGREGATE_AGENT_ADDRESS", "")
 
 
 def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
@@ -90,6 +91,27 @@ async def _trigger_assessment_agent(session_id: str, session_data: dict) -> None
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning(f"Assessment agent trigger failed: {e}")
+
+
+async def _trigger_aggregate_agent(session_id: str, session_data: dict) -> None:
+    """Forward completed assessment to the Aggregate Agent for cross-session tracking."""
+    if not _AGGREGATE_AGENT_ADDRESS:
+        return
+    try:
+        from uuid import uuid4
+        from uagents.communication import send_message
+        from uagents_core.contrib.protocols.chat import ChatMessage, TextContent
+
+        payload = _build_assessment_payload(session_id, session_data)
+        msg = ChatMessage(
+            timestamp=datetime.now(timezone.utc),
+            msg_id=uuid4(),
+            content=[TextContent(type="text", text=json.dumps(payload))],
+        )
+        await send_message(destination=_AGGREGATE_AGENT_ADDRESS, message=msg)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"Aggregate agent trigger failed: {e}")
 
 
 # ── Session start ─────────────────────────────────────────────
@@ -253,8 +275,9 @@ async def assess(
                 overall = round(total / weight_sum, 1) if weight_sum > 0 else 0.0
                 db.complete_session(session_id, overall)
 
-                # Fire-and-forget: send assessment to orchestrator agent
+                # Fire-and-forget: send assessment to orchestrator + aggregate agents
                 asyncio.create_task(_trigger_assessment_agent(session_id, session_data))
+                asyncio.create_task(_trigger_aggregate_agent(session_id, session_data))
 
         return response
     finally:

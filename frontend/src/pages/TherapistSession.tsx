@@ -8,22 +8,53 @@ type Phase = "loading" | "ready" | "connecting" | "connected" | "ended" | "error
 
 const WAVE_HEIGHTS = [10, 18, 26, 22, 14, 30, 18, 26, 14, 22, 18, 10]
 
-function TherapistChat({ phase, setPhase, systemPrompt }: { phase: Phase; setPhase: (p: Phase) => void; systemPrompt: string }) {
+function TherapistChat({ phase, setPhase, signedUrl, systemPrompt }: {
+  phase: Phase
+  setPhase: (p: Phase) => void
+  signedUrl: string
+  systemPrompt: string
+}) {
   const conversation = useConversation({
-    onConnect: () => setPhase("connected"),
-    onDisconnect: () => setPhase("ended"),
-    onError: () => setPhase("error"),
+    onConnect: () => {
+      console.log("[ElevenLabs] onConnect fired")
+      setPhase("connected")
+    },
+    onDisconnect: (details) => {
+      console.log("[ElevenLabs] onDisconnect fired:", JSON.stringify(details))
+      setPhase("ended")
+    },
+    onError: (error) => {
+      console.error("[ElevenLabs] onError fired:", error)
+      setPhase("error")
+    },
+    onStatusChange: (status) => console.log("[ElevenLabs] status:", status),
+    onMessage: (msg) => console.log("[ElevenLabs] message:", msg),
   })
 
   const isSpeaking = conversation.isSpeaking
 
   async function handleStart() {
-    setPhase("connecting")
+    // Explicitly request mic before handing off to ElevenLabs SDK
     try {
-      await conversation.startSession({
-        overrides: { agent: { prompt: { prompt: systemPrompt } } },
-      })
-    } catch {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach(t => t.stop())
+      console.log("[ElevenLabs] mic permission granted")
+    } catch (err) {
+      console.error("[ElevenLabs] mic permission denied:", err)
+      setPhase("error")
+      return
+    }
+
+    setPhase("connecting")
+    console.log("[ElevenLabs] calling startSession, signedUrl:", signedUrl?.slice(0, 60))
+    try {
+      const sessionConfig: Parameters<typeof conversation.startSession>[0] = { signedUrl }
+      if (systemPrompt) {
+        sessionConfig.overrides = { agent: { prompt: { prompt: systemPrompt } } }
+      }
+      conversation.startSession(sessionConfig)
+    } catch (err) {
+      console.error("[ElevenLabs] startSession threw:", err)
       setPhase("error")
     }
   }
@@ -223,8 +254,13 @@ export default function TherapistSession() {
         )}
 
         {sessionData && phase !== "loading" && phase !== "error" && (
-          <ConversationProvider signedUrl={sessionData.signed_url}>
-            <TherapistChat phase={phase} setPhase={setPhase} systemPrompt={sessionData.system_prompt} />
+          <ConversationProvider>
+            <TherapistChat
+              phase={phase}
+              setPhase={setPhase}
+              signedUrl={sessionData.signed_url}
+              systemPrompt={sessionData.system_prompt}
+            />
           </ConversationProvider>
         )}
       </div>

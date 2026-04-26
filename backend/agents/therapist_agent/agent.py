@@ -20,7 +20,7 @@ load_dotenv()
 agent = Agent(
     name="speakeasy_therapist",
     seed=os.getenv("THERAPIST_AGENT_SEED", "speakeasy_therapist_seed"),
-    port=8021,
+    port=8022,
     mailbox=True,
     publish_agent_details=True,
 )
