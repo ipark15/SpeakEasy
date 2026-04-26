@@ -204,7 +204,6 @@ export default function Results() {
 
   const TASK_ORDER = [
     { key: "read_sentence", task: readTask },
-    { key: "pataka",        task: patakaTask },
     { key: "free_speech",   task: freeTask },
   ]
 
@@ -212,7 +211,7 @@ export default function Results() {
     <div className="min-h-screen bg-[#edeaf8] dark:bg-[#0f0e1a]">
       {/* Nav */}
       <nav className="sticky top-0 z-10 sp-nav px-6 py-3 flex items-center justify-between">
-        <button onClick={() => navigate("/assess")} className="flex items-center gap-2.5 font-['Outfit'] font-bold text-[13px] text-[#4338ca] cursor-pointer hover:opacity-70 transition-opacity">
+        <button onClick={() => navigate("/assess")} className="flex items-center gap-2.5 font-['Quicksand'] font-bold text-[13px] text-[#4338ca] cursor-pointer hover:opacity-70 transition-opacity">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
@@ -222,7 +221,7 @@ export default function Results() {
           <button
             onClick={handleDownloadReport}
             disabled={generatingReport}
-            className="flex items-center gap-2 font-['Outfit'] font-bold text-[13px] h-[38px] px-4 rounded-[12px] cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
+            className="flex items-center gap-2 font-['Quicksand'] font-bold text-[13px] h-[38px] px-4 rounded-[12px] cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50"
             style={{ background: "rgba(67,56,202,0.08)", color: "#4338ca" }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -236,7 +235,7 @@ export default function Results() {
             <p className="text-[11px] text-red-500 mt-1 max-w-[200px] text-center">{reportError}</p>
           )}
           <button onClick={() => navigate("/dashboard")}
-            className="bg-[#4338ca] text-white font-['Outfit'] font-bold text-[13px] h-[38px] px-5 rounded-[12px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+            className="bg-[#4338ca] text-white font-['Quicksand'] font-bold text-[13px] h-[38px] px-5 rounded-[12px] cursor-pointer hover:bg-[#3730a3] transition-colors"
             style={{ boxShadow: "0px 4px 8px rgba(67,56,202,0.28)" }}>
             Dashboard
           </button>
@@ -272,28 +271,10 @@ export default function Results() {
           <p className="text-[9px] font-bold tracking-[1.5px] text-[#9896b0] uppercase mb-1">Breakdown</p>
           <h2 className="text-[20px] font-bold text-[#1e1b4b] mb-5" style={{ fontFamily: "'DM Serif Display', serif" }}>Score details</h2>
 
-          <div className="grid grid-cols-5 gap-2 mb-5">
-            {DIMS.map(({ key, label, color }) => {
-              const val = breakdown[key] ?? 0
-              const numColor = scoreColor(val)
-              return (
-                <div key={key} className="flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-bold tracking-[1.1px]" style={{ color }}>{label}</span>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={numColor} strokeWidth="2.5">
-                      <polyline points="18 15 12 9 6 15"/>
-                    </svg>
-                  </div>
-                  <span className="text-[34px] font-bold leading-none" style={{ color: numColor, fontFamily: "'DM Serif Display', serif" }}>{val}</span>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Bar chart — pixel heights so bars are accurate */}
-          <div className="flex gap-2">
-            {/* Y-axis labels */}
-            <div className="relative h-[100px] w-7 flex-shrink-0 text-[9px] text-[#9896b0] text-right">
+          {/* Bar chart — scores float above their bars, colors from scoreColor */}
+          <div className="flex gap-2 mt-2">
+            {/* Y-axis */}
+            <div className="relative h-[120px] w-7 flex-shrink-0 text-[9px] text-[#9896b0] text-right">
               {[100, 75, 50, 25, 0].map(v => (
                 <span key={v} className="absolute right-0 leading-none"
                   style={{ bottom: `${v}px`, transform: "translateY(50%)" }}>
@@ -301,29 +282,36 @@ export default function Results() {
                 </span>
               ))}
             </div>
-            {/* Chart area */}
             <div className="flex-1">
-              <div className="relative h-[100px]">
-                {/* Grid lines at exact px positions */}
+              {/* Chart zone — 120px tall, bars occupy bottom 100px */}
+              <div className="relative h-[120px]">
                 {[100, 75, 50, 25, 0].map(v => (
                   <div key={v} className="absolute w-full border-t border-[rgba(99,102,241,0.1)]"
                     style={{ bottom: `${v}px` }} />
                 ))}
-                {/* Bars */}
                 <div className="absolute inset-0 flex items-end gap-2 px-1">
-                  {DIMS.map(({ key, color }) => {
+                  {DIMS.map(({ key }) => {
                     const val = breakdown[key] ?? 0
+                    const c = scoreColor(val)
                     return (
-                      <div key={key} className="flex-1 rounded-t-[6px] transition-all duration-500"
-                        style={{ height: `${val}px`, background: color }} />
+                      <div key={key} className="flex-1 relative h-full flex flex-col justify-end">
+                        <span className="absolute w-full text-center text-[15px] font-bold leading-none"
+                          style={{ color: c, bottom: `${val + 5}px`, fontFamily: "'DM Serif Display', serif" }}>
+                          {val}
+                        </span>
+                        <div className="w-full rounded-t-[6px] transition-all duration-500"
+                          style={{ height: `${val}px`, background: c }} />
+                      </div>
                     )
                   })}
                 </div>
               </div>
-              {/* X-axis labels */}
+              {/* X-axis labels — uniform muted color */}
               <div className="flex gap-2 px-1 mt-1.5">
                 {DIMS.map(({ key, label }) => (
-                  <span key={key} className="flex-1 text-[8px] text-[#9896b0] text-center leading-tight">{label}</span>
+                  <span key={key} className="flex-1 text-[8px] text-[#9896b0] font-semibold tracking-wide text-center leading-tight uppercase">
+                    {label}
+                  </span>
                 ))}
               </div>
             </div>
@@ -334,11 +322,11 @@ export default function Results() {
               <div className="flex flex-col gap-5">
                 <div className="text-center py-6">
                   <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">AI coaching is ready</p>
-                  <p className="font-['Outfit'] font-normal text-[14px] text-[#6b6b8a] mb-6 max-w-sm mx-auto">
+                  <p className="font-['Quicksand'] font-normal text-[14px] text-[#6b6b8a] mb-6 max-w-sm mx-auto">
                     Pick a specialized AI coach to work on your specific areas of improvement.
                   </p>
                   <button onClick={() => navigate("/coach")}
-                    className="bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
+                    className="bg-[#4338ca] text-white font-['Quicksand'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
                     style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
                     Choose a Coach
                   </button>
@@ -346,16 +334,16 @@ export default function Results() {
                 <div className="rounded-[20px] p-6 flex items-center justify-between gap-6"
                   style={{ background: "rgba(99,102,241,0.06)", border: "1px solid rgba(99,102,241,0.12)" }}>
                   <div>
-                    <p className="font-['Outfit'] font-bold text-[11px] text-[#9896b0] tracking-[1.1px] uppercase mb-1">For your clinician</p>
+                    <p className="font-['Quicksand'] font-bold text-[11px] text-[#9896b0] tracking-[1.1px] uppercase mb-1">For your clinician</p>
                     <p className="font-['DM_Serif_Display'] text-[20px] text-[#1e1b4b] mb-1">Clinical Report</p>
-                    <p className="font-['Outfit'] font-normal text-[13px] text-[#6b6b8a]">
+                    <p className="font-['Quicksand'] font-normal text-[13px] text-[#6b6b8a]">
                       AI-generated PDF with scores, charts, and SLP-ready narrative. Takes ~15 seconds.
                     </p>
                   </div>
                   <button
                     onClick={handleDownloadReport}
                     disabled={generatingReport}
-                    className="shrink-0 flex items-center gap-2 h-[46px] px-6 rounded-[14px] font-['Outfit'] font-semibold text-[14px] text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="shrink-0 flex items-center gap-2 h-[46px] px-6 rounded-[14px] font-['Quicksand'] font-semibold text-[14px] text-white cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
                     style={{ background: "#4338ca", boxShadow: "0px 4px 10px rgba(67,56,202,0.28)" }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -417,7 +405,6 @@ export default function Results() {
                 <div key={key}>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[14px] font-semibold text-[#1e1b4b]">{TASK_LABELS[key]}</p>
-                    <span className="text-[10px] font-bold tracking-widest text-[#9896b0]">Exercise {idx + 1}</span>
                   </div>
                   <div className="rounded-[14px] p-4 bg-[rgba(245,243,255,0.6)] text-[14px] leading-8 text-[#1e1b4b]">
                     {words.length > 0 ? (

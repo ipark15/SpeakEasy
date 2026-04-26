@@ -147,7 +147,7 @@ export default function Dashboard() {
               <span className="text-sm text-[#6a7282]">/100</span>
             </div>
             <span className="inline-block mt-1 text-[11px] font-medium bg-[#d0fae5] text-[#007a55] rounded-full px-2 py-0.5">
-              +{data.score_change}% this month
+              {data.score_change >= 0 ? "+" : ""}{data.score_change}% this month
             </span>
           </Card>
 

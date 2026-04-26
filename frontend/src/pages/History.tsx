@@ -7,21 +7,21 @@ import { getHistory, getUserReports, downloadReport, type HistoryData, type Sess
 
 const MOCK: HistoryData = {
   sessions: [
-    { id: "1", type: "General", created_at: "2026-04-24", overall_score: 87, fluency: 89, clarity: 88, rhythm: 84, prosody: 86, voice_quality: 85 },
-    { id: "2", type: "Pattern Analysis", created_at: "2026-04-20", overall_score: 82, fluency: 80, clarity: 84, rhythm: 82, prosody: 83, voice_quality: 81 },
-    { id: "3", type: "General", created_at: "2026-04-15", overall_score: 79, fluency: 78, clarity: 80, rhythm: 81, prosody: 77, voice_quality: 79 },
-    { id: "4", type: "General", created_at: "2026-04-10", overall_score: 76, fluency: 74, clarity: 77, rhythm: 75, prosody: 78, voice_quality: 76 },
-    { id: "5", type: "Pattern Analysis", created_at: "2026-04-05", overall_score: 73, fluency: 70, clarity: 74, rhythm: 73, prosody: 74, voice_quality: 74 },
+    { id: "1", type: "General", created_at: "2026-04-24", overall_score: 87, fluency: 89, clarity: 88, rhythm: 84, prosody: 86, voice_quality: 85, pronunciation: 83 },
+    { id: "2", type: "Pattern Analysis", created_at: "2026-04-20", overall_score: 82, fluency: 80, clarity: 84, rhythm: 82, prosody: 83, voice_quality: 81, pronunciation: 76 },
+    { id: "3", type: "General", created_at: "2026-04-15", overall_score: 79, fluency: 78, clarity: 80, rhythm: 81, prosody: 77, voice_quality: 79, pronunciation: 71 },
+    { id: "4", type: "General", created_at: "2026-04-10", overall_score: 76, fluency: 74, clarity: 77, rhythm: 75, prosody: 78, voice_quality: 76, pronunciation: 68 },
+    { id: "5", type: "Pattern Analysis", created_at: "2026-04-05", overall_score: 73, fluency: 70, clarity: 74, rhythm: 73, prosody: 74, voice_quality: 74, pronunciation: 65 },
   ],
   improvement: 14,
   best_score: 87,
 }
 
-const SUB_SCORE_COLORS: Record<string, string> = {
-  fluency: "#c7d2fe",
-  clarity: "#bfdbfe",
-  rhythm: "#fed7aa",
-  prosody: "#d1fae5",
+function subScoreStyle(score: number | null): { background: string; color: string } {
+  if (score == null) return { background: "#f3f4f6", color: "#6b7280" }
+  if (score >= 80) return { background: "rgba(22,163,74,0.12)", color: "#15803d" }
+  if (score >= 60) return { background: "rgba(217,119,6,0.12)", color: "#b45309" }
+  return { background: "rgba(220,38,38,0.12)", color: "#b91c1c" }
 }
 
 function LineChart({ sessions }: { sessions: SessionDetail[] }) {
@@ -115,7 +115,7 @@ export default function History() {
           </button>
           <p className="text-[11px] font-semibold tracking-[0.15em] text-[#6a7282] uppercase mb-2">History</p>
           <h1 className="text-[32px] font-bold text-[#1e2939] font-['DM_Serif_Display'] leading-tight">
-            Your progress.
+            Your progress
           </h1>
         </div>
 
@@ -123,7 +123,7 @@ export default function History() {
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: "Sessions", value: data.sessions.length, sub: "Completed" },
-            { label: "Improvement", value: `+${data.improvement}`, sub: "Points gained" },
+            { label: "Improvement", value: `${data.improvement >= 0 ? "+" : ""}${data.improvement}`, sub: "Points gained" },
             { label: "Best Score", value: data.best_score, sub: "All time" },
           ].map(({ label, value, sub }) => (
             <Card key={label} className="text-center">
@@ -142,7 +142,7 @@ export default function History() {
               <h3 className="text-[16px] font-semibold text-[#1e2939]">Performance over time</h3>
             </div>
             <span className="text-[11px] font-medium bg-[#d0fae5] text-[#007a55] rounded-full px-3 py-1">
-              +{data.improvement} pts
+              {data.improvement >= 0 ? "+" : ""}{data.improvement} pts
             </span>
           </div>
           <LineChart sessions={data.sessions} />
@@ -181,19 +181,19 @@ export default function History() {
                 </div>
 
                 {/* Sub-scores */}
-                <div className="grid grid-cols-4 gap-2">
-                  {(["fluency", "clarity", "rhythm", "prosody"] as const).map((key) => (
-                    <div
-                      key={key}
-                      className="rounded-[12px] px-3 py-2 text-center"
-                      style={{ background: SUB_SCORE_COLORS[key] ?? "#f3f4f6" }}
-                    >
-                      <p className="text-[9px] font-semibold tracking-widest uppercase text-[#374151] mb-0.5">
-                        {key}
-                      </p>
-                      <p className="text-[16px] font-bold text-[#1e2939]">{s[key]}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-5 gap-2">
+                  {(["fluency", "clarity", "rhythm", "prosody", "pronunciation"] as const).map((key) => {
+                    const val = s[key] ?? null
+                    const { background, color } = subScoreStyle(val)
+                    return (
+                      <div key={key} className="rounded-[12px] px-2 py-2 text-center" style={{ background }}>
+                        <p className="text-[8px] font-semibold tracking-widest uppercase mb-0.5" style={{ color }}>
+                          {key}
+                        </p>
+                        <p className="text-[16px] font-bold" style={{ color }}>{val ?? "—"}</p>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </Card>

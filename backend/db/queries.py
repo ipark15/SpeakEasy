@@ -325,7 +325,7 @@ def get_history_data(user_id: str) -> dict:
     session_ids = [s["id"] for s in sessions]
     assessments = (
         db.table("assessments")
-        .select("session_id, score_fluency, score_clarity, score_rhythm, score_prosody, score_voice_quality")
+        .select("session_id, score_fluency, score_clarity, score_rhythm, score_prosody, score_voice_quality, score_pronunciation")
         .in_("session_id", session_ids)
         .execute()
         .data
@@ -353,6 +353,7 @@ def get_history_data(user_id: str) -> dict:
             "rhythm": _avg([t.get("score_rhythm") for t in tasks]),
             "prosody": _avg([t.get("score_prosody") for t in tasks]),
             "voice_quality": _avg([t.get("score_voice_quality") for t in tasks]),
+            "pronunciation": _avg([t.get("score_pronunciation") for t in tasks]),
         })
 
     all_scores = [s["overall_score"] for s in sessions if s.get("overall_score") is not None]

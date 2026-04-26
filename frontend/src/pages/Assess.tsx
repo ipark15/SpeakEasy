@@ -10,7 +10,8 @@ const STEPS = [
     navLabel: "Exercise 01 — Read Aloud",
     heading: "Read Aloud",
     exerciseLabel: "Exercise 1 of 3",
-    instruction: "Please read the following sentence aloud as clearly as you can: \"Please call Stella and ask her to bring these things with her from the store.\"",
+    instruction: "Please read the following sentence aloud as clearly as you can:",
+    spoken: "Please call Stella and ask her to bring these things with her from the store.",
     duration: 10,
   },
   {
@@ -18,7 +19,8 @@ const STEPS = [
     navLabel: "Exercise 02 — Pa-Ta-Ka",
     heading: "Pa-Ta-Ka",
     exerciseLabel: "Exercise 2 of 3",
-    instruction: `Repeat "pa-ta-ka" as quickly and clearly as you can for the full duration.`,
+    instruction: "Repeat the following phrase 5 times as quickly and clearly as possible:",
+    spoken: "pa-ta-ka",
     duration: 8,
   },
   {
@@ -27,6 +29,7 @@ const STEPS = [
     heading: "Free Speech",
     exerciseLabel: "Exercise 3 of 3",
     instruction: "Tell me one thing you did yesterday, speaking naturally.",
+    spoken: null,
     duration: 20,
   },
 ]
@@ -102,8 +105,8 @@ export default function Assess() {
             </svg>
           </div>
           <div>
-            <p className="font-['Outfit'] font-semibold text-[13px] text-[#1e1b4b] leading-none mb-0.5">{current.navLabel}</p>
-            <p className="font-['Outfit'] font-normal text-[11px] text-[#9896b0] leading-none">Speech Assessment</p>
+            <p className="font-['Quicksand'] font-semibold text-[15px] text-[#1e1b4b] leading-none mb-0.5">{current.navLabel}</p>
+            <p className="font-['Quicksand'] font-normal text-[13px] text-[#9896b0] leading-none">Speech Assessment</p>
           </div>
         </div>
         {/* Top progress bar — 3 segments */}
@@ -130,12 +133,12 @@ export default function Assess() {
           </div>
 
           {/* Step label */}
-          <p className="font-['Outfit'] font-bold text-[10px] text-[#9896b0] tracking-[1.2px] uppercase mb-3">
+          <p className="font-['Quicksand'] font-bold text-[12px] text-[#9896b0] tracking-[1.2px] uppercase mb-3">
             {current.exerciseLabel}
           </p>
 
           {/* Heading */}
-          <h1 className="font-['DM_Serif_Display'] text-[28px] text-[#1e1b4b] mb-6">{current.heading}</h1>
+          <h1 className="font-['Quicksand'] text-[28px] text-[#1e1b4b] mb-6">{current.heading}</h1>
 
           {/* Instruction box */}
           <div className="bg-[#f8f7ff] rounded-[18px] p-4 mb-4 flex gap-3 items-start">
@@ -143,7 +146,12 @@ export default function Assess() {
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <p className="font-['Outfit'] font-normal text-[14px] leading-[22px] text-[#1e1b4b]">{current.instruction}</p>
+            <div className="font-['Quicksand'] text-[16px] leading-[22px] text-[#1e1b4b]">
+              <p className="font-normal">{current.instruction}</p>
+              {current.spoken && (
+                <p className="font-bold mt-2 text-[#4338ca]">"{current.spoken}"</p>
+              )}
+            </div>
           </div>
 
           {/* Mic area */}
@@ -159,10 +167,10 @@ export default function Assess() {
                     <line x1="8" y1="22" x2="16" y2="22"/>
                   </svg>
                 </div>
-                <p className="font-['DM_Serif_Display'] text-[28px] text-[#4338ca]">{seconds}s</p>
+                <p className="font-['Quicksand'] text-[28px] text-[#4338ca]">{seconds}s</p>
               </>
             ) : submitting ? (
-              <p className="font-['Outfit'] font-normal text-[13px] text-[#9896b0]">Analysing…</p>
+              <p className="font-['Quicksand'] font-normal text-[13px] text-[#9896b0]">Analysing…</p>
             ) : (
               <>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d4d0ee" strokeWidth="1.5">
@@ -171,13 +179,13 @@ export default function Assess() {
                   <line x1="12" y1="18" x2="12" y2="22"/>
                   <line x1="8" y1="22" x2="16" y2="22"/>
                 </svg>
-                <p className="font-['Outfit'] font-normal text-[12px] text-[#9896b0]">Press the button below to start</p>
+                <p className="font-['Quicksand'] font-normal text-[12px] text-[#9896b0]">Press the button below to start</p>
               </>
             )}
           </div>
 
           {(error || sessionError) && (
-            <p className="font-['Outfit'] text-sm text-red-500 text-center mb-4">
+            <p className="font-['Quicksand'] text-sm text-red-500 text-center mb-4">
               {error || sessionError}
             </p>
           )}
@@ -185,7 +193,7 @@ export default function Assess() {
           {/* Button */}
           {!isRecording && !submitting && (
             <button onClick={start} disabled={!!sessionError}
-              className="w-full h-[54px] bg-[#4338ca] text-white font-['Outfit'] font-semibold text-[15px] rounded-[18px] flex items-center justify-center gap-2 cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50"
+              className="w-full h-[54px] bg-[#4338ca] text-white font-['Quicksand'] font-semibold text-[15px] rounded-[18px] flex items-center justify-center gap-2 cursor-pointer hover:bg-[#3730a3] transition-colors disabled:opacity-50"
               style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                 <path d="M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
@@ -199,13 +207,13 @@ export default function Assess() {
 
           {isRecording && (
             <button onClick={stop}
-              className="w-full h-[54px] font-['Outfit'] font-semibold text-[15px] text-[#4338ca] rounded-[18px] cursor-pointer transition-colors"
+              className="w-full h-[54px] font-['Quicksand'] font-semibold text-[15px] text-[#4338ca] rounded-[18px] cursor-pointer transition-colors"
               style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(99,102,241,0.2)" }}>
               Stop Early
             </button>
           )}
 
-          <p className="font-['Outfit'] font-normal text-[12px] text-[#9896b0] text-center mt-4">
+          <p className="font-['Quicksand'] font-normal text-[12px] text-[#9896b0] text-center mt-4">
             Speak clearly and at a natural pace
           </p>
         </div>

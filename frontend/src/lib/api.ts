@@ -141,6 +141,7 @@ export type SessionDetail = {
   rhythm: number
   prosody: number
   voice_quality: number
+  pronunciation: number
 }
 
 export type HistoryData = {
