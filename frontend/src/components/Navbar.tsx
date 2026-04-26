@@ -14,12 +14,11 @@ export default function Navbar({ showActions = true }: NavbarProps) {
     >
       <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
         <div className="flex items-end gap-0.5">
-          <span className="font-['Outfit'] font-extrabold text-[27px] leading-[27px] text-[#4338ca] tracking-[-0.54px]">Speakeas</span>
-          <svg width="22" height="36" viewBox="0 0 22 29" fill="none">
+          <span className="font-['Outfit'] font-extrabold text-[27px] leading-[27px] text-[#4338ca] tracking-[-0.54px]">SpeakEas</span>
+          <svg width="22" height="36" viewBox="0 0 22 27" fill="none">
             <path d="M11 3a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z" fill="#4338ca"/>
-            <path d="M18 13v1a7 7 0 0 1-14 0v-1" stroke="#4338ca" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="11" y1="21" x2="11" y2="27" stroke="#4338ca" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="7" y1="27" x2="15" y2="27" stroke="#4338ca" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M18 13v1a7 7 0 0 1-14 0v-1" stroke="#4338ca" strokeWidth="3" strokeLinecap="round"/>
+            <line x1="11" y1="21" x2="11" y2="27" stroke="#4338ca" strokeWidth="3" strokeLinecap="round"/>
           </svg>
         </div>
       </div>
