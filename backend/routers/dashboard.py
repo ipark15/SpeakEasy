@@ -1,6 +1,7 @@
 from __future__ import annotations
 import csv
 import io
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -11,15 +12,87 @@ import backend.db.queries as db
 
 router = APIRouter()
 
+DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
 
 # ── Dashboard ─────────────────────────────────────────────────
 
 @router.get("/dashboard/{user_id}")
 def get_dashboard(user_id: str):
-    return db.get_dashboard_data(user_id)
+    raw = db.get_dashboard_data(user_id)
+    sessions = raw["sessions"]  # ordered created_at asc
+
+    scored = [s for s in sessions if s.get("overall_score") is not None]
+    scores = [s["overall_score"] for s in scored]
+
+    avg_score = round(sum(scores) / len(scores)) if scores else 0
+    last_score = round(scores[-1]) if scores else 0
+    score_change = round(scores[-1] - scores[-2]) if len(scores) >= 2 else 0
+    last_session_date = sessions[-1]["created_at"][:10] if sessions else ""
+
+    # Map date string → latest score for that day
+    date_to_score: dict[str, float] = {}
+    for s in scored:
+        date_to_score[s["created_at"][:10]] = s["overall_score"]
+
+    monday = date.today() - timedelta(days=date.today().weekday())
+    weekly_scores = [
+        {"day": day, "score": round(date_to_score[d]) if (d := (monday + timedelta(days=i)).isoformat()) in date_to_score else None}
+        for i, day in enumerate(DAYS)
+    ]
+
+    recent_sessions = [
+        {"id": s["id"], "type": "General", "date": s["created_at"][:10], "score": round(s.get("overall_score") or 0)}
+        for s in reversed(sessions[-3:])
+    ]
+
+    return {
+        "streak": raw["current_streak"],
+        "best_streak": raw["longest_streak"],
+        "avg_score": avg_score,
+        "score_change": score_change,
+        "total_tests": len(sessions),
+        "last_score": last_score,
+        "last_session_date": last_session_date,
+        "weekly_scores": weekly_scores,
+        "recent_sessions": recent_sessions,
+    }
+
+
+# ── History ───────────────────────────────────────────────────
+
+@router.get("/history/{user_id}")
+def get_history(user_id: str):
+    return db.get_history_data(user_id)
 
 
 # ── Profile ───────────────────────────────────────────────────
+
+@router.get("/profile/{user_id}")
+def get_user_profile(user_id: str):
+    raw = db.get_dashboard_data(user_id)
+    profile = db.get_profile(user_id)
+    sessions = raw["sessions"]  # ordered created_at asc
+
+    scores = [s["overall_score"] for s in sessions if s.get("overall_score") is not None]
+
+    full_name = (profile.get("display_name") if profile else None) or "User"
+
+    if sessions:
+        first_dt = datetime.fromisoformat(sessions[0]["created_at"].replace("Z", "+00:00"))
+        joined_at = first_dt.strftime("%B %Y")
+    else:
+        joined_at = ""
+
+    return {
+        "full_name": full_name,
+        "email": "",
+        "joined_at": joined_at,
+        "best_score": round(max(scores)) if scores else 0,
+        "improvement": round(scores[-1] - scores[0]) if len(scores) >= 2 else 0,
+        "total_tests": len(sessions),
+    }
+
 
 class ProfileUpdate(BaseModel):
     user_id: str
@@ -69,7 +142,7 @@ def export_csv(user_id: str):
 @router.get("/export/{user_id}/pdf")
 def export_pdf(user_id: str):
     from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.units import inch
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib import colors
@@ -89,7 +162,6 @@ def export_pdf(user_id: str):
     story.append(Paragraph(f"SpeakEasy Speech Report — {name}", styles["Title"]))
     story.append(Spacer(1, 0.2 * inch))
 
-    # ── Summary section ───────────────────────────────────────
     story.append(Paragraph("Summary", styles["Heading2"]))
     session_count = len(data["sessions"])
     streak = data["current_streak"]
@@ -101,14 +173,12 @@ def export_pdf(user_id: str):
     story.append(Paragraph(summary_text, styles["Normal"]))
     story.append(Spacer(1, 0.15 * inch))
 
-    # Goals
     goals = data.get("goals")
     if goals:
         goal_lines = ", ".join(f"{k}: {v}" for k, v in goals.items())
         story.append(Paragraph(f"Goals: {goal_lines}", styles["Normal"]))
         story.append(Spacer(1, 0.15 * inch))
 
-    # Overall score trend (last 10 sessions)
     recent = [s for s in data["sessions"] if s.get("overall_score") is not None][-10:]
     if recent:
         story.append(Paragraph("Overall Score (recent sessions)", styles["Heading3"]))
@@ -127,7 +197,6 @@ def export_pdf(user_id: str):
         story.append(t)
         story.append(Spacer(1, 0.3 * inch))
 
-    # ── Detailed SLP section ──────────────────────────────────
     story.append(Paragraph("Detailed Clinical Metrics (SLP)", styles["Heading2"]))
     story.append(Spacer(1, 0.1 * inch))
 
