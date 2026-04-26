@@ -62,6 +62,7 @@ def _build_assessment_payload(session_id: str, session_data: dict) -> dict:
 
     return {
         "session_id": session_id,
+        "user_id": session_data.get("user_id", ""),
         "assessed_at": datetime.now(timezone.utc).isoformat(),
         "composite_score": round(composite_total / composite_w, 1) if composite_w > 0 else 0.0,
         "scores_summary": {

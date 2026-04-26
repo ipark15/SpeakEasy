@@ -50,34 +50,80 @@ def _dim_summary(scores: dict) -> str:
     return "\n".join(lines) if lines else "  - No dimension scores available."
 
 
+_METRIC_LABELS = {
+    "wpm": ("WPM", "words/min", "130–160"),
+    "word_error_rate": ("Word Error Rate", "%", "<10%"),
+    "ddk_rate": ("DDK rate", "syl/sec", "5–7"),
+    "pitch_std": ("Pitch variation", "Hz", "20–55"),
+    "avg_word_confidence": ("Word confidence", "%", ">85%"),
+}
+
+
 def _history_summary(history: dict) -> str:
     if not history or history.get("sessions_completed", 0) == 0:
         return "This is the user's first session — no historical data yet."
 
     n = history["sessions_completed"]
     streak = history.get("current_streak", 0)
-    lines = [f"  - Sessions completed: {n}  |  Current practice streak: {streak} day(s)"]
+    longest = history.get("longest_streak", 0)
+    lines = [
+        f"  - Sessions completed: {n}",
+        f"  - Practice streak: {streak} day(s) current  |  {longest} day(s) longest ever",
+    ]
 
     # Score trend
     trend = history.get("score_trend", [])
     if len(trend) >= 2:
         first = trend[0].get("overall", "?")
         last = trend[-1].get("overall", "?")
-        direction = "improving" if isinstance(first, (int, float)) and isinstance(last, (int, float)) and last > first else "fluctuating"
-        lines.append(f"  - Overall score trend: {first} → {last} ({direction})")
+        if isinstance(first, (int, float)) and isinstance(last, (int, float)):
+            delta = round(last - first, 1)
+            direction = f"+{delta}" if delta >= 0 else str(delta)
+            lines.append(f"  - Overall score since first session: {first} → {last} ({direction})")
+        recent = [e["overall"] for e in trend[-3:] if e.get("overall") is not None]
+        if len(recent) >= 2:
+            lines.append(f"  - Recent session scores: {' → '.join(str(s) for s in recent)}")
+    elif len(trend) == 1:
+        lines.append(f"  - Previous session score: {trend[0].get('overall', 'N/A')}")
 
-    # Dimension averages
+    # All 5 dimension averages
     dim_avgs = history.get("dimension_averages", {})
     if dim_avgs:
+        order = ["fluency", "clarity", "rhythm", "prosody", "pronunciation"]
         worst = min(dim_avgs, key=lambda k: dim_avgs[k])
         best = max(dim_avgs, key=lambda k: dim_avgs[k])
-        lines.append(f"  - Historically strongest dimension: {best.capitalize()} ({dim_avgs[best]})")
-        lines.append(f"  - Historically weakest dimension: {worst.capitalize()} ({dim_avgs[worst]})")
+        lines.append("  - Historical dimension averages:")
+        for d in order:
+            if d in dim_avgs:
+                tag = " ← weakest" if d == worst else (" ← strongest" if d == best else "")
+                lines.append(f"    {d.capitalize()}: {dim_avgs[d]}/100{tag}")
 
-    # Recurring words
+    # Metric trends: historical avg → most recent
+    metric_trends = history.get("metric_trends", {})
+    if metric_trends:
+        lines.append("  - Key metric trends (historical avg → most recent):")
+        for key, info in metric_trends.items():
+            avg = info["average"]
+            latest = info["latest"]
+            n_tracked = info["sessions_tracked"]
+            label, unit, benchmark = _METRIC_LABELS.get(key, (key, "", ""))
+            if key in ("word_error_rate", "avg_word_confidence"):
+                avg_fmt, latest_fmt = f"{avg:.0%}", f"{latest:.0%}"
+            else:
+                avg_fmt, latest_fmt = f"{avg:.1f}", f"{latest:.1f}"
+            arrow = "↑" if latest > avg else ("↓" if latest < avg else "→")
+            lines.append(
+                f"    {label}: avg {avg_fmt} → latest {latest_fmt} {arrow}"
+                f"  (benchmark: {benchmark}, {n_tracked} session(s) tracked)"
+            )
+
+    # Recurring unclear words
     recurring = history.get("recurring_low_confidence_words", [])
     if recurring:
-        word_list = ", ".join(f'"{w["word"]}" ({w["avg_confidence"]:.0%} avg, {w["occurrences"]} sessions)' for w in recurring[:5])
+        word_list = ", ".join(
+            f'"{w["word"]}" ({w["avg_confidence"]:.0%} conf, {w["occurrences"]}x)'
+            for w in recurring[:6]
+        )
         lines.append(f"  - Words consistently unclear across sessions: {word_list}")
 
     return "\n".join(lines)
@@ -112,6 +158,8 @@ def build_system_prompt(current_assessment: dict, history: dict) -> str:
     scores = current_assessment.get("scores_summary", {})
     tasks = current_assessment.get("tasks", [])
     session_id = current_assessment.get("session_id", "")
+    display_name = history.get("display_name") or None
+    goals = history.get("goals")
 
     dim_block = _dim_summary(scores)
     task_block = _task_highlights(tasks)
@@ -125,8 +173,11 @@ def build_system_prompt(current_assessment: dict, history: dict) -> str:
     else:
         focus_line = "Encourage the user and offer one concrete exercise based on the data."
 
-    return f"""You are Maya, a warm and encouraging AI speech coach at SpeakEasy. You just finished analyzing this user's speech assessment and you're having a follow-up voice conversation to help them understand their results and give them a practical next step.
+    name_line = f"Address the user by their name: {display_name}.\n" if display_name else ""
+    goals_line = f"User's stated goals: {goals}\n" if goals else ""
 
+    return f"""You are Maya, a warm and encouraging AI speech coach at SpeakEasy. You just finished analyzing this user's speech assessment and you're having a follow-up voice conversation to help them understand their results and give them a practical next step.
+{name_line}{goals_line}
 You have access to their full assessment data below. Use it to make the conversation feel personal — reference their actual scores, their specific transcript moments, and their progress over time. Don't recite the numbers robotically; weave them naturally into conversation like a real coach would.
 
 ════════════════════════════════════════
@@ -170,7 +221,7 @@ CONVERSATION FLOW
 - Open by warmly greeting the user and giving them a one-sentence headline of their results (e.g. "Great news — you scored 78 overall, and your fluency was really solid today.")
 - Ask if they want to go deeper on any dimension or just hear their top recommendation.
 - Give one specific, actionable drill. Be concrete — give the exact phrase or syllable sequence to practice.
-- Keep responses concise — this is a voice conversation, not a lecture. Short sentences, natural pacing.
+- Keep responses SHORT. This is a voice conversation — aim for 1–3 sentences per turn. Never monologue. If you have more to say, pause and let the user respond first.
 - At a natural closing point in the conversation (when the user seems done or asks what's next), say:
   "{_REPORT_REMINDER}"
 - End warmly and encourage them to come back for their next session.
@@ -178,7 +229,7 @@ CONVERSATION FLOW
 ════════════════════════════════════════
 TONE
 ════════════════════════════════════════
-Warm, direct, human. Like a knowledgeable friend who happens to know a lot about speech. Not clinical, not robotic. Use "you" language, not "the user". Short affirmations ("Nice!", "Exactly right.") are good. Never be condescending.
+Warm, direct, human. Like a knowledgeable friend who happens to know a lot about speech. Not clinical, not robotic. Use "you" language, not "the user". Short affirmations ("Nice!", "Exactly right.") are good. Never be condescending. Brevity is a feature — less is more.
 """
 
 

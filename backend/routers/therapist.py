@@ -82,7 +82,7 @@ def start_therapist_session(req: TherapistSessionRequest):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    history = db.get_history_data(req.user_id)
+    history = db.get_dashboard_data(req.user_id)
     assessment_summary = _build_assessment_summary(session)
     system_prompt = build_system_prompt(assessment_summary, history)
     first_message = build_first_message(assessment_summary)
