@@ -39,19 +39,6 @@ const MOCK: DashboardData = {
 
 const QUICK_ACTIONS = [
   {
-    label: "Talk to AI Coach",
-    sub: "1-1 session with your coach",
-    path: "/coach",
-    iconBg: "bg-[#ede9fe]",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2">
-        <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
-        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-      </svg>
-    ),
-  },
-  {
     label: "View history",
     sub: "All past assessments",
     path: "/history",
@@ -249,19 +236,8 @@ export default function Dashboard() {
               </Button>
             </Card>
             <Card>
-              <p className="text-[10px] font-semibold tracking-widest text-[#6a7282] uppercase mb-1">Practice</p>
-              <h3 className="text-[20px] font-bold text-[#1e2939] mb-1">AI Coach</h3>
-              <p className="text-[13px] text-[#6a7282] mb-4">Live guided sessions with your personal speaking coach </p>
-              <Button onClick={() => navigate("/coach")} className="w-full flex items-center justify-center gap-2">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                Enter a 1-1 Session
-              </Button>
-            </Card>
-            <Card>
               <p className="text-[10px] font-semibold tracking-widest text-[#6a7282] uppercase mb-1">Therapist</p>
-              <h3 className="text-[20px] font-bold text-[#1e2939] mb-1">Talk to Alex</h3>
+              <h3 className="text-[20px] font-bold text-[#1e2939] mb-1">Talk to AI</h3>
               <p className="text-[13px] text-[#6a7282] mb-4">Voice session with your AI speech therapist</p>
               <Button onClick={() => navigate("/therapist")} className="w-full flex items-center justify-center gap-2">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

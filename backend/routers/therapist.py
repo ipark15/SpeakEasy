@@ -95,7 +95,7 @@ def start_therapist_session(req: TherapistSessionRequest):
         patch_resp = httpx.patch(
             f"{ELEVENLABS_BASE}/v1/convai/agents/{ELEVENLABS_AGENT_ID}",
             headers=headers,
-            json={"conversation_config": {"agent": {"prompt": {"prompt": system_prompt}}}},
+            json={"conversation_config": {"agent": {"prompt": {"prompt": system_prompt}}, "tts": {"voice_id": "q0PCqBlLEWqtUZJ2DYn7"}}},
             timeout=30.0,
         )
         patch_resp.raise_for_status()

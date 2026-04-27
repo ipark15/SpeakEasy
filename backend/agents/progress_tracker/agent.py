@@ -100,6 +100,8 @@ def _fetch_history(user_id: str, exclude_session_id: str) -> dict:
         "sessions_completed": len(past_sessions),
         "current_streak": data.get("current_streak", 0),
         "longest_streak": data.get("longest_streak", 0),
+        "display_name": data.get("display_name"),
+        "goals": data.get("goals"),
         "score_trend": score_trend,
         "dimension_averages": dim_averages,
         "recurring_low_confidence_words": recurring_words,

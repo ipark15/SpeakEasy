@@ -321,14 +321,14 @@ export default function Results() {
         {tab === "AI Insights" && (
               <div className="flex flex-col gap-5">
                 <div className="text-center py-6">
-                  <p className="font-['DM_Serif_Display'] text-[24px] text-[#1e1b4b] mb-3">Your AI coach is ready</p>
+                  <p className="font-['Quicksand'] font-bold text-[22px] text-[#1e1b4b] mb-3">Your AI therapist is ready</p>
                   <p className="font-['Quicksand'] font-normal text-[14px] text-[#6b6b8a] mb-6 max-w-sm mx-auto">
-                    Get personalised tips and guidance based on your results in a live 1-on-1 session.
+                    Talk to Alex — an AI speech therapist personalised to your results.
                   </p>
-                  <button onClick={() => navigate(`/coach?sessionId=${sessionId}`)}
+                  <button onClick={() => navigate(`/therapist/${sessionId}`)}
                     className="bg-[#4338ca] text-white font-['Quicksand'] font-semibold text-[15px] h-[54px] px-10 rounded-[18px] cursor-pointer hover:bg-[#3730a3] transition-colors"
                     style={{ boxShadow: "0px 6px 12px rgba(67,56,202,0.28)" }}>
-                    Enter your 1-1 speech analysis session
+                    Talk to Alex
                   </button>
                 </div>
                 <div className="rounded-[20px] p-6 flex items-center justify-between gap-6"
@@ -479,24 +479,25 @@ export default function Results() {
         </div>
 
         {/* Therapist CTA */}
-        <div className="rounded-[24px] p-6 sp-card">
+        <div className="rounded-[24px] p-6"
+          style={{ background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)", boxShadow: "0px 8px 24px rgba(67,56,202,0.32)" }}>
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)" }}>
+              style={{ background: "rgba(255,255,255,0.18)" }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-bold tracking-[1.5px] text-[#9896b0] uppercase mb-0.5">AI Therapist</p>
-              <p className="text-[16px] font-bold text-[#1e1b4b]" style={{ fontFamily: "'DM Serif Display', serif" }}>Talk to Alex</p>
-              <p className="text-[12px] text-[#6b6b8a]">Voice session personalized to your results</p>
+              <p className="text-[9px] font-bold tracking-[1.5px] text-[rgba(255,255,255,0.6)] uppercase mb-0.5">AI Therapist</p>
+              <p className="text-[16px] font-bold text-white font-['Quicksand']">Talk to AI</p>
+              <p className="text-[12px] text-[rgba(255,255,255,0.75)] font-['Quicksand']">Voice session personalized to your results</p>
             </div>
             <button
-              onClick={() => navigate(`/coach?sessionId=${sessionId}`)}
-              className="shrink-0 h-[40px] px-5 rounded-[12px] text-white font-['Outfit'] font-semibold text-[13px] cursor-pointer hover:opacity-90 transition-opacity"
-              style={{ background: "#4338ca", boxShadow: "0px 4px 10px rgba(67,56,202,0.28)" }}
+              onClick={() => navigate(`/therapist/${sessionId}`)}
+              className="shrink-0 h-[40px] px-5 rounded-[12px] font-['Quicksand'] font-semibold text-[13px] cursor-pointer hover:opacity-90 transition-opacity"
+              style={{ background: "rgba(255,255,255,0.95)", color: "#4338ca", boxShadow: "0px 4px 12px rgba(0,0,0,0.15)" }}
             >
               Start
             </button>
@@ -505,16 +506,6 @@ export default function Results() {
 
         {/* Bottom CTAs */}
         <div className="flex flex-col gap-3 pb-8">
-          <button onClick={() => navigate(`/coach?sessionId=${sessionId}`)}
-            className="flex items-center justify-center gap-2.5 h-[58px] rounded-[18px] text-[15px] font-semibold text-white bg-[#4338ca] hover:bg-[#3730a3] transition-colors font-['Quicksand']"
-            style={{ boxShadow: "0px 6px 14px rgba(67,56,202,0.28)" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="11,5 6,9 2,9 2,15 6,15 11,19 11,5"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-            </svg>
-            Enter your 1-1 speech analysis session
-          </button>
           <div className="grid grid-cols-2 gap-3">
             <button onClick={() => navigate("/assess")}
               className="flex items-center justify-center gap-2 h-[48px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors font-['Quicksand']">
