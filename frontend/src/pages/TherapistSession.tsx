@@ -7,7 +7,98 @@ import { startTherapistSession, type TherapistSession } from "../lib/api"
 type Phase = "loading" | "ready" | "connecting" | "connected" | "ended" | "error"
 type ChatEntry = { role: "user" | "agent"; text: string }
 
-const WAVE_HEIGHTS = [10, 18, 26, 22, 14, 30, 18, 26, 14, 22, 18, 10]
+const NUM_BARS = 16
+
+function VoiceBars({ active, isSpeaking }: { active: boolean; isSpeaking: boolean }) {
+  const [heights, setHeights] = useState<number[]>(Array(NUM_BARS).fill(4))
+  const animRef = useRef<number | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  useEffect(() => {
+    if (!active) {
+      setHeights(Array(NUM_BARS).fill(4))
+      animRef.current && cancelAnimationFrame(animRef.current)
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      return
+    }
+
+    let ctx: AudioContext | null = null
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      streamRef.current = stream
+      ctx = new AudioContext()
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 64
+      source.connect(analyser)
+      analyserRef.current = analyser
+
+      const data = new Uint8Array(analyser.frequencyBinCount)
+      const tick = () => {
+        analyser.getByteFrequencyData(data)
+        const slice = Math.floor(data.length / NUM_BARS)
+        const next = Array.from({ length: NUM_BARS }, (_, i) => {
+          const val = data[i * slice] ?? 0
+          return Math.max(4, (val / 255) * 52)
+        })
+        setHeights(next)
+        animRef.current = requestAnimationFrame(tick)
+      }
+      tick()
+    }).catch(() => {})
+
+    return () => {
+      animRef.current && cancelAnimationFrame(animRef.current)
+      streamRef.current?.getTracks().forEach(t => t.stop())
+      ctx?.close()
+    }
+  }, [active])
+
+  // AI speaking: animated sine wave
+  const [aiHeights, setAiHeights] = useState<number[]>(Array(NUM_BARS).fill(4))
+  const aiFrameRef = useRef<number | null>(null)
+  const aiTickRef = useRef(0)
+
+  useEffect(() => {
+    if (!isSpeaking) {
+      setAiHeights(Array(NUM_BARS).fill(4))
+      aiFrameRef.current && cancelAnimationFrame(aiFrameRef.current)
+      return
+    }
+    const tick = () => {
+      aiTickRef.current += 0.12
+      const t = aiTickRef.current
+      const next = Array.from({ length: NUM_BARS }, (_, i) => {
+        const phase = (i / NUM_BARS) * Math.PI * 2
+        return 8 + Math.abs(Math.sin(t + phase)) * 44
+      })
+      setAiHeights(next)
+      aiFrameRef.current = requestAnimationFrame(tick)
+    }
+    tick()
+    return () => { aiFrameRef.current && cancelAnimationFrame(aiFrameRef.current) }
+  }, [isSpeaking])
+
+  const displayHeights = isSpeaking ? aiHeights : heights
+  const color = isSpeaking ? "#4338ca" : "#a5b4fc"
+
+  return (
+    <div className="flex items-center justify-center gap-1 h-16">
+      {displayHeights.map((h, i) => (
+        <div
+          key={i}
+          className="w-1.5 rounded-full transition-all"
+          style={{
+            height: `${h}px`,
+            background: color,
+            transitionDuration: isSpeaking ? "80ms" : "60ms",
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 function TherapistChat({ phase, setPhase, signedUrl }: {
   phase: Phase
@@ -22,65 +113,53 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
   }, [chatLog])
 
   const conversation = useConversation({
-    onConnect: () => {
-      setChatLog([])
-      setPhase("connected")
-    },
-    onDisconnect: (details) => {
-      console.log("[ElevenLabs] onDisconnect:", JSON.stringify(details))
-      setPhase("ended")
-    },
-    onError: (error) => {
-      console.error("[ElevenLabs] onError:", error)
-      setPhase("error")
-    },
+    onConnect: () => { setChatLog([]); setPhase("connected") },
+    onDisconnect: () => setPhase("ended"),
+    onError: () => setPhase("error"),
     onMessage: ({ message, role }) => {
       setChatLog(prev => [...prev, { role, text: message }])
     },
   })
 
   const isSpeaking = conversation.isSpeaking
+  const isConnected = phase === "connected"
 
   async function handleStart() {
-    // Explicitly request mic before handing off to ElevenLabs SDK
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(t => t.stop())
-      console.log("[ElevenLabs] mic permission granted")
-    } catch (err) {
-      console.error("[ElevenLabs] mic permission denied:", err)
+    } catch {
       setPhase("error")
       return
     }
-
     setPhase("connecting")
-    console.log("[ElevenLabs] calling startSession, signedUrl:", signedUrl?.slice(0, 60))
     try {
       conversation.startSession({ signedUrl })
-    } catch (err) {
-      console.error("[ElevenLabs] startSession threw:", err)
+    } catch {
       setPhase("error")
     }
   }
 
-  async function handleEnd() {
-    await conversation.endSession()
+  function handleEnd() {
+    conversation.endSession()
   }
 
   return (
     <>
+      <VoiceBars active={isConnected} isSpeaking={isSpeaking} />
+
       {phase === "ready" && (
         <div className="flex flex-col items-center gap-4 w-full">
-          <div className="rounded-[16px] p-4 w-full text-center"
+          <div className="rounded-[18px] p-4 w-full text-center"
             style={{ background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.12)" }}>
-            <p className="text-[13px] text-[#4338ca] font-medium mb-1">Ready to talk</p>
-            <p className="text-[12px] text-[#6b6b8a]">
-              Alex has reviewed your assessment. Speak naturally — the session is voice-based.
+            <p className="font-['Quicksand'] font-semibold text-[13px] text-[#4338ca] mb-1">Ready to talk</p>
+            <p className="font-['Quicksand'] text-[12px] text-[#6b6b8a]">
+              Your assessment has been reviewed. Speak naturally — the session is voice-based.
             </p>
           </div>
           <button
             onClick={handleStart}
-            className="w-full h-[54px] rounded-[18px] text-white font-['Outfit'] font-semibold text-[16px] cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center gap-2.5"
+            className="w-full h-[54px] rounded-[18px] text-white font-['Quicksand'] font-bold text-[16px] cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center gap-2.5"
             style={{ background: "#4338ca", boxShadow: "0px 6px 16px rgba(67,56,202,0.32)" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -101,33 +180,21 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
                 style={{ animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
-          <p className="text-[13px] text-[#9896b0]">Connecting to Alex…</p>
+          <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">Connecting to Alex…</p>
         </div>
       )}
 
       {phase === "connected" && (
-        <div className="flex flex-col items-center gap-5 w-full">
-          <div className="rounded-[16px] p-4 w-full text-center"
+        <div className="flex flex-col items-center gap-4 w-full">
+          <div className="rounded-[18px] p-4 w-full text-center"
             style={{ background: "rgba(22,163,74,0.07)", border: "1px solid rgba(22,163,74,0.15)" }}>
             <div className="flex items-center justify-center gap-2 mb-1">
               <div className="w-2 h-2 rounded-full bg-[#16a34a] animate-pulse" />
-              <p className="text-[13px] text-[#16a34a] font-semibold">
+              <p className="font-['Quicksand'] font-semibold text-[13px] text-[#16a34a]">
                 {isSpeaking ? "Alex is speaking…" : "Listening to you…"}
               </p>
             </div>
-            <p className="text-[12px] text-[#6b6b8a]">Speak naturally — Alex will respond.</p>
-          </div>
-
-          <div className="flex items-center gap-1 h-12">
-            {WAVE_HEIGHTS.map((h, i) => (
-              <div key={i} className="w-1.5 rounded-full transition-all duration-300"
-                style={{
-                  background: isSpeaking ? "#4338ca" : "#c7d2fe",
-                  height: isSpeaking ? `${h}px` : "8px",
-                  animationDelay: `${i * 0.08}s`,
-                }}
-              />
-            ))}
+            <p className="font-['Quicksand'] text-[12px] text-[#6b6b8a]">Speak naturally — The coach will respond.</p>
           </div>
 
           {chatLog.length > 0 && (
@@ -135,7 +202,7 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
               style={{ maxHeight: "220px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(229,231,235,0.8)" }}>
               {chatLog.map((entry, i) => (
                 <div key={i} className={`flex ${entry.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className="max-w-[80%] px-3 py-2 rounded-[12px] text-[12px] leading-relaxed"
+                  <div className="max-w-[80%] px-3 py-2 rounded-[12px] font-['Quicksand'] text-[12px] leading-relaxed"
                     style={entry.role === "user"
                       ? { background: "#4338ca", color: "white" }
                       : { background: "white", color: "#1e1b4b", border: "1px solid rgba(229,231,235,0.8)" }
@@ -150,7 +217,7 @@ function TherapistChat({ phase, setPhase, signedUrl }: {
 
           <button
             onClick={handleEnd}
-            className="w-full h-[52px] rounded-[18px] font-['Outfit'] font-semibold text-[15px] cursor-pointer hover:opacity-90 transition-opacity"
+            className="w-full h-[50px] rounded-[18px] font-['Quicksand'] font-semibold text-[15px] cursor-pointer hover:opacity-90 transition-opacity"
             style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#dc2626" }}
           >
             End Session
@@ -174,15 +241,10 @@ export default function TherapistSession() {
 
   useEffect(() => {
     if (!user || !sessionId) return
-
     startTherapistSession(sessionId, user.id)
-      .then((data) => {
-        setSessionData(data)
-        setPhase("ready")
-      })
+      .then(data => { setSessionData(data); setPhase("ready") })
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : "Could not start therapist session."
-        setError(msg)
+        setError(err instanceof Error ? err.message : "Could not start therapist session.")
         setPhase("error")
       })
   }, [user, sessionId])
@@ -194,26 +256,29 @@ export default function TherapistSession() {
 
   return (
     <div className="min-h-screen bg-[#edeaf8] flex flex-col">
-      <nav className="sticky top-0 z-10 sp-nav px-6 py-3 flex items-center justify-between">
+      {/* Nav */}
+      <nav className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between"
+        style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.6)" }}>
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2.5 font-['Outfit'] font-bold text-[13px] text-[#4338ca] cursor-pointer hover:opacity-70 transition-opacity"
+          className="flex items-center gap-2 font-['Quicksand'] font-bold text-[13px] text-[#4338ca] cursor-pointer hover:opacity-70 transition-opacity"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Back
         </button>
-        <span className="font-['Outfit'] font-bold text-[13px] text-[#4338ca]">Speech Therapist</span>
-        <div className="w-16" />
+        <span className="font-['Quicksand'] font-bold text-[13px] text-[#4338ca]">Alex</span>
+        <div className="w-12" />
       </nav>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 max-w-[480px] mx-auto w-full">
+      <div className="flex-1 flex flex-col items-center justify-center px-5 py-10 max-w-[440px] mx-auto w-full gap-6">
+
         {/* Avatar */}
-        <div className="relative mb-8">
-          <div className="w-[120px] h-[120px] rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)" }}>
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+        <div className="relative">
+          <div className="w-[108px] h-[108px] rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 100%)", boxShadow: "0px 12px 32px rgba(67,56,202,0.28)" }}>
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
@@ -223,11 +288,12 @@ export default function TherapistSession() {
           )}
         </div>
 
-        <h1 className="text-[28px] font-bold text-[#1e1b4b] mb-1" style={{ fontFamily: "'DM Serif Display', serif" }}>
-          Alex
-        </h1>
-        <p className="text-[14px] text-[#6b6b8a] mb-8">Speech Therapist · AI-Powered</p>
+        <div className="text-center">
+          <h1 className="font-['Quicksand'] font-extrabold text-[28px] text-[#1e1b4b] mb-1">Alex</h1>
+          <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">Speech Therapist · AI-Powered</p>
+        </div>
 
+        {/* Loading */}
         {phase === "loading" && !missingSessionId && (
           <div className="flex flex-col items-center gap-3">
             <div className="flex gap-1.5">
@@ -236,53 +302,58 @@ export default function TherapistSession() {
                   style={{ animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
-            <p className="text-[13px] text-[#9896b0]">Preparing your session…</p>
+            <p className="font-['Quicksand'] text-[13px] text-[#9896b0]">Preparing your session…</p>
           </div>
         )}
 
+        {/* Session ended */}
         {phase === "ended" && (
           <div className="flex flex-col items-center gap-4 w-full">
-            <div className="rounded-[16px] p-4 w-full text-center"
+            <div className="rounded-[18px] p-5 w-full text-center"
               style={{ background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.12)" }}>
-              <p className="text-[14px] font-semibold text-[#1e1b4b] mb-1">Session complete</p>
-              <p className="text-[13px] text-[#6b6b8a]">Great work! Keep practising the exercises Alex recommended.</p>
+              <p className="font-['Quicksand'] font-bold text-[15px] text-[#1e1b4b] mb-1">Session complete</p>
+              <p className="font-['Quicksand'] text-[13px] text-[#6b6b8a]">Great work! Keep practising the exercises Alex recommended.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 w-full">
               <button onClick={() => setPhase("ready")}
-                className="h-[50px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors">
+                className="h-[50px] rounded-[16px] font-['Quicksand'] font-semibold text-[14px] text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors cursor-pointer">
                 Talk Again
               </button>
               <button onClick={() => navigate("/dashboard")}
-                className="h-[50px] rounded-[16px] text-[14px] font-semibold text-white cursor-pointer hover:opacity-90 transition-opacity"
-                style={{ background: "#4338ca" }}>
+                className="h-[50px] rounded-[16px] font-['Quicksand'] font-semibold text-[14px] text-white cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ background: "#4338ca", boxShadow: "0px 4px 12px rgba(67,56,202,0.28)" }}>
                 Dashboard
               </button>
             </div>
           </div>
         )}
 
+        {/* Error */}
         {showError && (
           <div className="flex flex-col items-center gap-4 w-full">
-            <div className="rounded-[16px] p-4 w-full text-center"
+            <div className="rounded-[18px] p-5 w-full text-center"
               style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.15)" }}>
-              <p className="text-[13px] font-semibold text-[#dc2626] mb-1">Something went wrong</p>
-              <p className="text-[12px] text-[#6b6b8a]">{errorMsg}</p>
+              <p className="font-['Quicksand'] font-semibold text-[13px] text-[#dc2626] mb-1">Something went wrong</p>
+              <p className="font-['Quicksand'] text-[12px] text-[#6b6b8a]">{errorMsg}</p>
             </div>
             <button onClick={() => navigate(-1)}
-              className="w-full h-[50px] rounded-[16px] text-[14px] font-semibold text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors">
+              className="w-full h-[50px] rounded-[16px] font-['Quicksand'] font-semibold text-[14px] text-[#4338ca] bg-white border border-[rgba(229,231,235,0.8)] hover:bg-[#f0eeff] transition-colors cursor-pointer">
               Go Back
             </button>
           </div>
         )}
 
-        {sessionData && phase !== "loading" && phase !== "error" && (
-          <ConversationProvider>
-            <TherapistChat
-              phase={phase}
-              setPhase={setPhase}
-              signedUrl={sessionData.signed_url}
-            />
-          </ConversationProvider>
+        {/* Active conversation */}
+        {sessionData && phase !== "loading" && phase !== "error" && !missingSessionId && (
+          <div className="w-full">
+            <ConversationProvider>
+              <TherapistChat
+                phase={phase}
+                setPhase={setPhase}
+                signedUrl={sessionData.signed_url}
+              />
+            </ConversationProvider>
+          </div>
         )}
       </div>
     </div>
