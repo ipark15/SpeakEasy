@@ -66,20 +66,27 @@ export type Assessment = {
   tips?: string[]
 }
 
+export type SessionAssessment = {
+  task: string
+  score_fluency: number | null
+  score_clarity: number | null
+  score_rhythm: number | null
+  score_prosody: number | null
+  score_pronunciation: number | null
+  score_overall: number | null
+  transcript?: string
+  word_timestamps?: WordTimestamp[]
+  syllable_intervals?: number[]
+  filler_words?: FillerEvent[]
+  low_confidence_words?: LowConfWord[]
+  pauses?: PauseEvent[]
+}
+
 export type SessionData = {
   id: string
   user_id: string
   overall_score: number
-  assessments: Array<{
-    task: string
-    score_fluency: number | null
-    score_clarity: number | null
-    score_rhythm: number | null
-    score_prosody: number | null
-    score_pronunciation: number | null
-    score_overall: number | null
-    [key: string]: unknown
-  }>
+  assessments: SessionAssessment[]
 }
 
 export async function startSession(userId: string): Promise<{ session_id: string }> {

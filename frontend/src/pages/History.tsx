@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar"
 import Card from "../components/Card"
 import { useAuth } from "../hooks/useAuth"
-import { getHistory, getUserReports, downloadReport, type HistoryData, type SessionDetail, type ReportMeta } from "../lib/api"
+import { getHistory, getUserReports, downloadReport, type HistoryData, type SessionDetail } from "../lib/api"
 
 const MOCK: HistoryData = {
   sessions: [

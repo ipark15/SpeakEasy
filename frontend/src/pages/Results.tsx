@@ -156,7 +156,7 @@ export default function Results() {
   const navigate = useNavigate()
   const [session, setSession] = useState<SessionData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<Tab>("Feedback")
+  const [tab, _setTab] = useState<Tab>("Feedback")
   const [generatingReport, setGeneratingReport] = useState(false)
   const [reportError, setReportError] = useState("")
 
@@ -389,7 +389,7 @@ export default function Results() {
           </div>
 
           <div className="flex flex-col gap-5">
-            {TASK_ORDER.map(({ key, task }, idx) => {
+            {TASK_ORDER.map(({ key, task }) => {
               if (!task) return null
               const fillerSet = new Set((task.filler_words ?? []).map(f => f.word.toLowerCase()))
               const lowSet = new Set((task.low_confidence_words ?? []).map(w => w.word.toLowerCase()))
